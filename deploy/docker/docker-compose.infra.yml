@@ -1,0 +1,78 @@
+# 本地开发基础设施（仅中间件，不含应用）
+# 使用: make infra-up
+# ⚠ 安全：所有端口绑定 127.0.0.1，仅允许本机访问
+# ⚠ 密钥：通过 deploy/docker/.env 文件注入（已加入 .gitignore）
+#    首次使用: cp deploy/docker/.env.example deploy/docker/.env && 编辑填入真实密码
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: vibeshop-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${VIBESHOP_MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: vibeshop
+      MYSQL_USER: "${VIBESHOP_MYSQL_USER:-vibeshop}"
+      MYSQL_PASSWORD: "${VIBESHOP_MYSQL_PASSWORD}"
+      MYSQL_CHARSET: utf8mb4
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vibeshop-postgres
+    environment:
+      POSTGRES_USER: "${VIBESHOP_PG_USER:-vibeshop}"
+      POSTGRES_PASSWORD: "${VIBESHOP_PG_PASSWORD}"
+      POSTGRES_DB: vibeshop_content
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${VIBESHOP_PG_USER:-vibeshop}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vibeshop-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass "${VIBESHOP_REDIS_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${VIBESHOP_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    container_name: vibeshop-nats
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    command: -js -m 8222
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+  pg_data:
+  redis_data:

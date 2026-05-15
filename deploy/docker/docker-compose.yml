@@ -1,0 +1,114 @@
+# VibeShop 全栈 Docker Compose（应用 + 中间件）
+# 使用: make docker-up 或 docker compose -f deploy/docker/docker-compose.yml up -d
+# ⚠ 安全：所有中间件端口绑定 127.0.0.1，仅允许本机访问
+# ⚠ 密钥：通过 deploy/docker/.env 文件注入（已加入 .gitignore）
+#    首次使用: cp deploy/docker/.env.example deploy/docker/.env && 编辑填入真实密码
+
+services:
+  # ====== 应用 ======
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    container_name: vibeshop-app
+    ports:
+      - "${APP_HOST_PORT:-8080}:8080"
+    environment:
+      - APP_ENV=docker
+      - MYSQL_DSN=${VIBESHOP_MYSQL_USER:-vibeshop}:${VIBESHOP_MYSQL_PASSWORD}@tcp(mysql:3306)/vibeshop?charset=utf8mb4&parseTime=True&loc=Local
+      - PG_DSN=postgres://${VIBESHOP_PG_USER:-vibeshop}:${VIBESHOP_PG_PASSWORD}@postgres:5432/vibeshop_content?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${VIBESHOP_REDIS_PASSWORD}
+      - NATS_URL=nats://nats:4222
+      - JWT_SECRET=${VIBESHOP_JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ====== 中间件 ======
+  mysql:
+    image: mysql:8.0
+    container_name: vibeshop-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${VIBESHOP_MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: vibeshop
+      MYSQL_USER: "${VIBESHOP_MYSQL_USER:-vibeshop}"
+      MYSQL_PASSWORD: "${VIBESHOP_MYSQL_PASSWORD}"
+      MYSQL_CHARSET: utf8mb4
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vibeshop-postgres
+    environment:
+      POSTGRES_USER: "${VIBESHOP_PG_USER:-vibeshop}"
+      POSTGRES_PASSWORD: "${VIBESHOP_PG_PASSWORD}"
+      POSTGRES_DB: vibeshop_content
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${VIBESHOP_PG_USER:-vibeshop}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vibeshop-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass "${VIBESHOP_REDIS_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${VIBESHOP_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    container_name: vibeshop-nats
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    command: -js -m 8222
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+  pg_data:
+  redis_data:

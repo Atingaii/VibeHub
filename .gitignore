@@ -1,0 +1,59 @@
+# .gitignore
+
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.production
+# 含真实密钥的配置文件，不提交仓库（使用 *.example 模板）
+configs/dev.yaml
+configs/docker.yaml
+configs/prod.yaml
+deploy/docker/.env
+
+# Node
+node_modules/
+web/.next/
+web/out/
+mobile/dist/
+mobile/unpackage/
+
+# Build
+dist/
+build/
+
+# Uploads (dev)
+uploads/
+
+# Database files
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+vibeshop

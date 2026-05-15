@@ -1,0 +1,70 @@
+# Docker 环境配置模板
+# 用法：
+#   cp configs/docker.yaml.example configs/docker.yaml   （已加入 .gitignore，不会提交）
+#   真实密钥通过 docker-compose environment 节注入（推荐），或直接填写本文件
+#
+# ⚠ 所有 <PLACEHOLDER> 标记的值必须替换为真实值，或通过对应环境变量覆盖
+# 详见 deploy/docker/docker-compose.yml 及 docs/dev-workflow.md 环境变量参考表
+
+app:
+  name: "vibeshop"
+  env: "docker"
+  debug: false
+
+gateway:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "10s"
+  write_timeout: "30s"
+
+database:
+  mysql:
+    # 通过环境变量 MYSQL_DSN 覆盖（推荐），或替换下方 <MYSQL_PASSWORD> 占位符
+    dsn: ""
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+  postgres:
+    # 通过环境变量 PG_DSN 覆盖（推荐），或替换下方 <PG_PASSWORD> 占位符
+    # sslmode=disable：容器内部网络通信，生产环境需改为 sslmode=require
+    dsn: ""
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+
+redis:
+  addr: "redis:6379"
+  password: ""   # 通过环境变量 REDIS_PASSWORD 覆盖
+  db: 0
+  pool_size: 100
+  min_idle_conns: 10
+
+messaging:
+  nats:
+    url: "nats://nats:4222"
+    jetstream: true
+
+oss:
+  provider: "local"
+  local_path: "./uploads"
+
+auth:
+  jwt_secret: ""   # 通过环境变量 JWT_SECRET 覆盖（≥32 字符，openssl rand -base64 48）
+  access_token_ttl: "2h"
+  refresh_token_ttl: "168h"
+
+ai:
+  default_model: "ollama-qwen2"
+  ollama_url: "http://host.docker.internal:11434"
+  daily_token_budget: 100000
+
+observability:
+  log_level: "info"
+  log_format: "json"
+  tracing:
+    enabled: false
+    exporter: "jaeger"
+    endpoint: "jaeger:4317"
+  metrics:
+    enabled: true
+    port: 9100

@@ -1,0 +1,80 @@
+# 开发环境配置模板
+# 用法：
+#   cp configs/dev.yaml.example configs/dev.yaml   （已加入 .gitignore，不会提交）
+#   然后通过环境变量覆盖密钥字段（推荐），或直接在 dev.yaml 中填写真实值
+#
+# ⚠ 所有空字符串 "" 标记的密钥字段必须通过环境变量覆盖，或在本地 dev.yaml 中填写
+# 环境变量覆盖优先级高于本文件，见 docs/dev-workflow.md 环境变量参考表
+
+app:
+  name: "vibeshop"
+  env: "dev"
+  debug: true
+
+gateway:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "10s"
+  write_timeout: "30s"
+
+database:
+  mysql:
+    # 通过环境变量 MYSQL_DSN 覆盖（推荐）
+    # 格式: user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local
+    dsn: ""
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+  postgres:
+    # 通过环境变量 PG_DSN 覆盖（推荐）
+    # 格式: postgres://user:password@host:port/dbname?sslmode=disable
+    # sslmode=disable 仅用于本地开发（容器内部网络），生产环境必须改为 sslmode=require
+    dsn: ""
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+
+redis:
+  addr: "localhost:6379"
+  password: ""   # 通过环境变量 REDIS_PASSWORD 覆盖（对应 docker-compose --requirepass）
+  db: 0
+  pool_size: 100
+  min_idle_conns: 10
+
+messaging:
+  nats:
+    url: "nats://localhost:4222"
+    jetstream: true
+
+oss:
+  provider: "local"  # local | aliyun | aws
+  local_path: "./uploads"
+  # aliyun:
+  #   endpoint: "oss-cn-hangzhou.aliyuncs.com"
+  #   access_key: ""   # 通过 OSS_ACCESS_KEY 环境变量覆盖
+  #   secret_key: ""   # 通过 OSS_SECRET_KEY 环境变量覆盖
+  #   bucket: "vibeshop-dev"
+
+auth:
+  # 通过环境变量 JWT_SECRET 覆盖（≥32 字符，生产用 openssl rand -base64 48 生成）
+  jwt_secret: ""
+  access_token_ttl: "2h"
+  refresh_token_ttl: "168h"
+
+ai:
+  default_model: "ollama-qwen2"  # 开发环境用本地模型
+  ollama_url: "http://localhost:11434"
+  # openai_api_key: ""   # 通过 OPENAI_API_KEY 环境变量覆盖
+  # claude_api_key: ""   # 通过 CLAUDE_API_KEY 环境变量覆盖
+  daily_token_budget: 100000
+
+observability:
+  log_level: "debug"
+  log_format: "console"  # console | json
+  tracing:
+    enabled: true
+    exporter: "jaeger"
+    endpoint: "localhost:4317"
+  metrics:
+    enabled: true
+    port: 9100
