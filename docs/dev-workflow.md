@@ -51,12 +51,22 @@
 | `VIBESHOP_MYSQL_USER` | MySQL 业务用户名 | 默认 `vibeshop`，应用连接使用此用户 |
 | `VIBESHOP_MYSQL_PASSWORD` | MySQL 业务用户密码 | 应用 DSN 中的密码 |
 | `VIBESHOP_PG_USER` | PG 用户名 | 默认 `vibeshop`，非超级用户 |
-| `VIBESHOP_PG_PASSWORD` | PG 密码 | |
+| `VIBESHOP_PG_PASSWORD` | PG 密码 | **必须 URL-safe**：pgx 按 URL 解析 DSN，密码含 `/`/`+`/`@`/`:` 等会解析失败。建议用 `openssl rand -hex 24` 生成（48 hex 字符纯 `[0-9a-f]`） |
 | `VIBESHOP_REDIS_PASSWORD` | Redis requirepass 密码 | |
 | `VIBESHOP_JWT_SECRET` | JWT 签名密钥 | ≥32 字符 |
+| `VIBESHOP_MYSQL_HOST_PORT` | MySQL 主机端口（容器内仍为 3306） | 默认 `3306`；与本机/Windows MySQL 冲突时改为如 `3307` |
+| `VIBESHOP_PG_HOST_PORT` | PostgreSQL 主机端口（容器内仍为 5432） | 默认 `5432`；冲突时改为如 `5433` |
+| `VIBESHOP_REDIS_HOST_PORT` | Redis 主机端口（容器内仍为 6379） | 默认 `6379`；冲突时改为如 `6380` |
+| `VIBESHOP_NATS_HOST_PORT` | NATS 客户端主机端口（容器内仍为 4222） | 默认 `4222`；冲突时改为如 `4223` |
+| `VIBESHOP_NATS_MON_HOST_PORT` | NATS 监控主机端口（容器内仍为 8222） | 默认 `8222`；冲突时改为如 `8223` |
 
 > **⚠ 踩坑**：`.env` 文件中密码**不要使用 `$` 字符**，docker compose 会将其解释为变量引用。
 > 如密码含 `$`，实际传入的值会被截断。建议用 `openssl rand -base64 24` 生成无特殊字符的密码。
+
+> **⚠ 端口冲突排查**：执行 `make infra-up` 出现 `bind: address already in use` 时，
+> Linux 用 `ss -lntp` / Windows 用 `Get-NetTCPConnection -LocalPort 3306,5432,6379,4222`
+> 找出占用进程；如无法停止占用方，改 `VIBESHOP_*_HOST_PORT` 错开主机端口（容器内端口不变，
+> 但 host 上跑的客户端/`configs/dev.yaml` 的 DSN/`addr` 也要相应改）。
 
 ## 配置加载机制
 
@@ -90,10 +100,20 @@ VIBESHOP_MYSQL_ROOT_PASSWORD=<你的MySQL root密码>
 VIBESHOP_MYSQL_USER=vibeshop
 VIBESHOP_MYSQL_PASSWORD=<你的MySQL业务用户密码>
 VIBESHOP_PG_USER=vibeshop
-VIBESHOP_PG_PASSWORD=<你的PG密码>
+VIBESHOP_PG_PASSWORD=<URL-safe，建议 openssl rand -hex 24 生成 48 hex 字符>
 VIBESHOP_REDIS_PASSWORD=<你的Redis密码>
 VIBESHOP_JWT_SECRET=<至少32字符，openssl rand -base64 48>
+
+# 可选：错开默认端口避免与本机/Windows 服务冲突（默认值见 .env.example）
+# VIBESHOP_MYSQL_HOST_PORT=3307
+# VIBESHOP_PG_HOST_PORT=5433
+# VIBESHOP_REDIS_HOST_PORT=6380
+# VIBESHOP_NATS_HOST_PORT=4223
+# VIBESHOP_NATS_MON_HOST_PORT=8223
 ```
+
+> **⚠ PG 密码必须 URL-safe**：pgx 驱动按 URL 解析 DSN，密码中含 `/`/`+`/`@`/`:` 等会导致
+> "invalid port" 解析失败。MySQL/Redis/JWT 用 `rand -base64` 即可，PG 推荐 `rand -hex`。
 
 > Docker Compose 中所有中间件密码通过此 `.env` 文件注入（`${VIBESHOP_*}` 变量），compose 文件本身不含任何明文密码。
 

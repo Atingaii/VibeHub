@@ -15,7 +15,7 @@ services:
       MYSQL_PASSWORD: "${VIBESHOP_MYSQL_PASSWORD}"
       MYSQL_CHARSET: utf8mb4
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:${VIBESHOP_MYSQL_HOST_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: >
@@ -36,7 +36,7 @@ services:
       POSTGRES_PASSWORD: "${VIBESHOP_PG_PASSWORD}"
       POSTGRES_DB: vibeshop_content
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${VIBESHOP_PG_HOST_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -49,7 +49,7 @@ services:
     image: redis:7-alpine
     container_name: vibeshop-redis
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${VIBESHOP_REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass "${VIBESHOP_REDIS_PASSWORD}"
@@ -63,8 +63,8 @@ services:
     image: nats:2-alpine
     container_name: vibeshop-nats
     ports:
-      - "127.0.0.1:4222:4222"
-      - "127.0.0.1:8222:8222"
+      - "127.0.0.1:${VIBESHOP_NATS_HOST_PORT:-4222}:4222"
+      - "127.0.0.1:${VIBESHOP_NATS_MON_HOST_PORT:-8222}:8222"
     command: -js -m 8222
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]

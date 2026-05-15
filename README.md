@@ -51,6 +51,13 @@ curl http://localhost:8080/health
 > 模板文件 `.env.example` / `*.yaml.example` 可提交，**不含真实密钥**。
 > 详见 [docs/dev-workflow.md](docs/dev-workflow.md) — "首次初始化配置"节。
 
+> **端口冲突**：默认占用 3306/5432/6379/4222/8222；若已被本机或 Windows 服务占用，
+> 在 `deploy/docker/.env` 中设 `VIBESHOP_*_HOST_PORT` 错开主机端口（容器内端口不变），
+> 同步把 `configs/dev.yaml` 的 DSN/`addr` 改成对应端口。详见 dev-workflow.md。
+
+> **PG 密码必须 URL-safe**：pgx 按 URL 解析 DSN，密码含 `/`、`+`、`@`、`:` 等会导致连接失败。
+> 用 `openssl rand -hex 24` 生成 48 hex 字符的密码（其他字段仍可用 `rand -base64`）。
+
 ## 文档索引
 
 | 文档 | 说明 |

@@ -15,12 +15,12 @@ WARNINGS=0
 
 log_error() {
   echo -e "${RED}✗ ERROR: $1${NC}"
-  ((ERRORS++))
+  ERRORS=$((ERRORS + 1))
 }
 
 log_warn() {
   echo -e "${YELLOW}⚠ WARN: $1${NC}"
-  ((WARNINGS++))
+  WARNINGS=$((WARNINGS + 1))
 }
 
 log_ok() {
@@ -45,6 +45,15 @@ if [[ -f docs/dev-workflow.md ]] && [[ -f configs/dev.yaml ]]; then
   # 检查每个文档中声明的变量是否在 configs/ 或代码中能找到对应
   MISSING_COUNT=0
   for var in $DOC_VARS; do
+    # VIBESHOP_* 是 Docker Compose 专用变量（docs/dev-workflow.md 中
+    # "Docker 专用环境变量" 节明确说明应用不直接读取），跳过对账。
+    if [[ "$var" == VIBESHOP_* ]]; then
+      if ! grep -rq "$var" deploy/docker/ 2>/dev/null; then
+        log_warn "Docker 变量 $var 在 deploy/docker/ 中未找到引用"
+        MISSING_COUNT=$((MISSING_COUNT + 1))
+      fi
+      continue
+    fi
     # 跳过不需要在 yaml 中出现的变量（直接是环境变量覆盖）
     # 在 configs 或者 internal/ 中应有对应（小写形式或原始形式）
     VAR_LOWER=$(echo "$var" | tr '[:upper:]' '[:lower:]')
@@ -53,7 +62,7 @@ if [[ -f docs/dev-workflow.md ]] && [[ -f configs/dev.yaml ]]; then
       if [[ -d internal/ ]]; then
         if ! grep -rq "$var" internal/ 2>/dev/null; then
           log_warn "环境变量 $var（docs/dev-workflow.md 中声明）在 configs/ 和 internal/ 中未找到引用"
-          ((MISSING_COUNT++))
+          MISSING_COUNT=$((MISSING_COUNT + 1))
         fi
       fi
     fi
@@ -87,7 +96,7 @@ if [[ -n "$ANCHORS" ]]; then
       # 文件存在，检查函数/变量是否存在
       if ! grep -q "$FUNC_NAME" "$FILE_PATH" 2>/dev/null; then
         log_warn "锚点 $anchor: 文件存在但未找到符号 '$FUNC_NAME'"
-        ((ANCHOR_MISSING++))
+        ANCHOR_MISSING=$((ANCHOR_MISSING + 1))
       fi
     else
       # 文件不存在——如果是规划中的路径（项目还未实现），降为 info 不报错
@@ -95,7 +104,7 @@ if [[ -n "$ANCHORS" ]]; then
         : # 规划路径，项目尚未实现，静默跳过
       else
         log_warn "锚点 $anchor: 文件 '$FILE_PATH' 不存在"
-        ((ANCHOR_MISSING++))
+        ANCHOR_MISSING=$((ANCHOR_MISSING + 1))
       fi
     fi
   done
@@ -136,7 +145,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       fi
     else
       log_warn "commit $COMMIT_SHORT: 缺少 Doc-Impact 标签"
-      ((DOC_IMPACT_MISSING++))
+      DOC_IMPACT_MISSING=$((DOC_IMPACT_MISSING + 1))
     fi
   done
   
