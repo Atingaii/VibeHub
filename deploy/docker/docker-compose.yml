@@ -44,6 +44,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: vibeshop-mysql
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: "${VIBESHOP_MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: vibeshop
@@ -67,6 +68,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: vibeshop-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: "${VIBESHOP_PG_USER:-vibeshop}"
       POSTGRES_PASSWORD: "${VIBESHOP_PG_PASSWORD}"
@@ -84,6 +86,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: vibeshop-redis
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${VIBESHOP_REDIS_HOST_PORT:-6379}:6379"
     volumes:
@@ -98,6 +101,7 @@ services:
   nats:
     image: nats:2-alpine
     container_name: vibeshop-nats
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${VIBESHOP_NATS_HOST_PORT:-4222}:4222"
       - "127.0.0.1:${VIBESHOP_NATS_MON_HOST_PORT:-8222}:8222"

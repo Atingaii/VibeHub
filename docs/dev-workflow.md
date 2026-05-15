@@ -154,6 +154,11 @@ make infra-up
 > 基础设施密码通过 `deploy/docker/.env` 注入，
 > 确保应用配置（`configs/dev.yaml` 或环境变量）中的 DSN 密码与之一致。
 
+> **开机自启**：所有中间件容器使用 `restart: unless-stopped`，
+> 配合 `systemctl enable docker` 后，WSL2/宿主重启时容器会自动拉起，
+> 无需重新 `make infra-up`（仅在首次启动或 compose 文件变化时需要执行）。
+> WSL2 环境额外需要确保 `/etc/wsl.conf` 中 `[boot] systemd=true` 已开启。
+
 ### 2. 数据库迁移
 
 ```bash
