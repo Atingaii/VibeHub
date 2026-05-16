@@ -66,3 +66,6 @@ vibeshop
 # .claude/settings.local.json 是 Claude Code 本机权限白名单缓存
 .ccb/
 .claude/settings.local.json
+
+# 本地开发用的 IDE 扩展 / 私有工具（不入仓库）
+extensions/
