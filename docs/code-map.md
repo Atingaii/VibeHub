@@ -125,9 +125,10 @@ web/                        前端 Next.js（后续阶段）
 
 ### 我想加一个新的 Redis 缓存
 
-1. `internal/cache/keys.go` — 定义 key pattern + TTL
-2. `internal/cache/<name>.go` — 实现缓存操作
-3. 使用方 store/service 调用缓存层
+1. 确认归属哪个 Pool（`internal/cache/keys.go:Pool` — general/feed/stock/session/notify/rank）；如果都不匹配，先在 keys.go 加 Pool 常量并更新 ADR-003 表
+2. `internal/cache/keys.go` — 定义 key pattern + TTL（按 Pool.RequiresTTL() 自检）
+3. `internal/cache/<name>.go` — 实现缓存操作，通过 `RedisManager.Pool(p)` 取 client
+4. 使用方 store/service 调用缓存层
 
 ### 我想改配置项
 
@@ -142,6 +143,7 @@ web/                        前端 Next.js（后续阶段）
 
 | 关键概念 | 唯一权威文件 |
 |----------|-------------|
+| 所有 Redis Pool 定义 | `internal/cache/keys.go:Pool` |
 | 所有 Redis key 定义 | `internal/cache/keys.go` |
 | 所有 NATS topic 定义 | `internal/mq/topics.go` |
 | 所有环境变量说明 | `docs/dev-workflow.md` |

@@ -44,11 +44,13 @@ type DBConnConfig struct {
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 }
 
-// RedisConfig Redis 配置
+// RedisConfig Redis 配置。
+//
+// 单实例阶段：所有 Pool 共享同一个 server，DB 由 Pool 拓扑（internal/cache/keys.go）
+// 决定。这里不再暴露 db 字段，避免和 Pool 拓扑形成双重来源（见 ADR-003）。
 type RedisConfig struct {
 	Addr         string `mapstructure:"addr"`
 	Password     string `mapstructure:"password"`
-	DB           int    `mapstructure:"db"`
 	PoolSize     int    `mapstructure:"pool_size"`
 	MinIdleConns int    `mapstructure:"min_idle_conns"`
 }

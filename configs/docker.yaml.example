@@ -35,7 +35,6 @@ database:
 redis:
   addr: "redis:6379"
   password: ""   # 通过环境变量 REDIS_PASSWORD 覆盖
-  db: 0
   pool_size: 100
   min_idle_conns: 10
 

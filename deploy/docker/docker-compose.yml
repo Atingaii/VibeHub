@@ -91,7 +91,7 @@ services:
       - "127.0.0.1:${VIBESHOP_REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass "${VIBESHOP_REDIS_PASSWORD}"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction --requirepass "${VIBESHOP_REDIS_PASSWORD}"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${VIBESHOP_REDIS_PASSWORD}", "ping"]
       interval: 10s

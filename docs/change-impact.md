@@ -14,6 +14,7 @@
 | 加/改数据库表(PG) | `scripts/migration/pg/` DDL → `internal/model/` struct → `internal/store/` DAO |
 | 加/改 REST 端点 | `internal/server/router.go` + module handler + API 文档 |
 | 加/改 Redis Key | `internal/cache/keys.go` pattern + 使用方 store/cache 文件 + 文档说明 |
+| 加/改 Redis Pool 用途 | `internal/cache/keys.go:Pool` 加常量 + `pools` 表登记 DB/RequiresTTL/desc + `docs/adr/003-redis-unified-cache.md` Pool 表 |
 | 加/改 MQ Topic | `internal/mq/topics.go` + producer + consumer + 幂等策略说明 |
 | 加/改 MCP Tool | `internal/module/mcp/tools/` 实现 + `configs/mcp-tools.yaml` 路由 + `docs/api/mcp-tools.md` |
 | 加/改环境变量 | `configs/*.yaml.example` 模板 + `deploy/docker/.env.example` + `deploy/docker/docker-compose*.yml` + `docs/dev-workflow.md` 环境变量参考表 + README |
