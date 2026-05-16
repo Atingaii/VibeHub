@@ -36,7 +36,7 @@ echo ""
 # 1. 检查环境变量两端对账
 #    docs/dev-workflow.md 中列出的变量 vs configs/dev.yaml 中的实际使用
 # -----------------------------------------------------------
-echo "--- [1/4] 环境变量对账 ---"
+echo "--- [1/5] 环境变量对账 ---"
 
 if [[ -f docs/dev-workflow.md ]] && [[ -f configs/dev.yaml ]]; then
   # 从 dev-workflow.md 提取反引号包裹的环境变量名
@@ -92,7 +92,7 @@ echo ""
 # 2. 检查代码锚点存在性（R3）
 #    扫描所有 .md 文件中的 path:function 格式锚点
 # -----------------------------------------------------------
-echo "--- [2/4] 代码锚点存在性检查 ---"
+echo "--- [2/5] 代码锚点存在性检查 ---"
 
 # 查找 md 文件中类似 `internal/xxx/yyy.go:FuncName` 的锚点
 ANCHORS=$(grep -rhoP --exclude-dir=private '`[a-zA-Z_/]+\.go:[a-zA-Z_]+`' docs/ AGENTS.md README.md 2>/dev/null | tr -d '`' | sort -u || true)
@@ -133,7 +133,7 @@ echo ""
 # 3. Doc-Impact 格式检查（R6）
 #    检查最近 N 个 commit 的 Doc-Impact 标签
 # -----------------------------------------------------------
-echo "--- [3/4] Doc-Impact 格式检查 ---"
+echo "--- [3/5] Doc-Impact 格式检查 ---"
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   # 检查最近 10 个 commit
@@ -173,7 +173,7 @@ echo ""
 # 4. 文档完整性检查
 #    确认关键文档文件存在
 # -----------------------------------------------------------
-echo "--- [4/4] 文档完整性检查 ---"
+echo "--- [4/5] 文档完整性检查 ---"
 
 REQUIRED_DOCS=(
   "AGENTS.md"
@@ -183,6 +183,7 @@ REQUIRED_DOCS=(
   "docs/plan.md"
   "docs/architecture.md"
   "docs/code-map.md"
+  "docs/intro/README.md"
 )
 
 for doc in "${REQUIRED_DOCS[@]}"; do
@@ -192,6 +193,60 @@ for doc in "${REQUIRED_DOCS[@]}"; do
     log_error "$doc 缺失！"
   fi
 done
+
+echo ""
+
+# -----------------------------------------------------------
+# 5. docs/intro/ Markdown 锚点检查
+#    扫 docs/intro/*.md 里的相对 markdown 链接 [text](path.md#anchor)
+#    校：被链文件存在 + anchor 以 <a id="anchor"> 显式声明
+#    （中文 GFM auto-anchor 跨平台不可靠，intro 内必须用显式 <a id>）
+# -----------------------------------------------------------
+echo "--- [5/5] docs/intro/ 锚点检查 ---"
+
+INTRO_DIR="docs/intro"
+INTRO_LINK_ERRORS=0
+
+if [[ -d "$INTRO_DIR" ]]; then
+  while IFS= read -r src; do
+    while IFS= read -r match; do
+      [[ -z "$match" ]] && continue
+      # match 形如 "file.md#anchor"（已剥掉外层括号）
+      target="${match%#*}"
+      anchor="${match#*#}"
+      src_dir="$(dirname "$src")"
+      if [[ "$target" = /* ]]; then
+        resolved_input="${target#/}"
+      else
+        resolved_input="$src_dir/$target"
+      fi
+      # 规范化：解析 ../ 等
+      resolved_dir="$(cd "$(dirname "$resolved_input")" 2>/dev/null && pwd || true)"
+      if [[ -z "$resolved_dir" ]]; then
+        log_error "intro 链接路径无效: $src 引用 $target#$anchor"
+        INTRO_LINK_ERRORS=$((INTRO_LINK_ERRORS + 1))
+        continue
+      fi
+      resolved="$resolved_dir/$(basename "$resolved_input")"
+      resolved="${resolved#$PWD/}"
+      if [[ ! -f "$resolved" ]]; then
+        log_error "intro 链接目标缺失: $src 引用 $target#$anchor"
+        INTRO_LINK_ERRORS=$((INTRO_LINK_ERRORS + 1))
+        continue
+      fi
+      if ! grep -qE "<a +id=\"$anchor\"" "$resolved"; then
+        log_error "intro 锚点缺失: $src 引用 $target#$anchor，但 $resolved 中无 <a id=\"$anchor\">"
+        INTRO_LINK_ERRORS=$((INTRO_LINK_ERRORS + 1))
+      fi
+    done < <(grep -oE '\]\([^)]+\.md#[^)]+\)' "$src" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//' || true)
+  done < <(find "$INTRO_DIR" -type f -name '*.md')
+
+  if [[ $INTRO_LINK_ERRORS -eq 0 ]]; then
+    log_ok "docs/intro/ 内部锚点全部命中显式 <a id> 声明"
+  fi
+else
+  log_warn "$INTRO_DIR 不存在，跳过 intro 锚点检查"
+fi
 
 echo ""
 

@@ -249,6 +249,7 @@ Doc-Impact: docs/architecture.md, AGENTS.md
 
 ## 延伸阅读
 
+- [docs/intro/](docs/intro/) — **项目导读（小白友好，含术语表 + 决策摘要 + 链路走读）**
 - [docs/adr/](docs/adr/) — 架构决策记录（为什么这么做）
 - [docs/features/](docs/features/) — 功能设计文档（做之前先写这里）
 - `docs/private/` — 本地私有文档（工单/安全扫描/整改记录，不提交 GitHub）

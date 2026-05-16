@@ -64,6 +64,7 @@ curl http://localhost:8080/health
 
 | 文档 | 说明 |
 |------|------|
+| [docs/intro/](docs/intro/) | **项目导读（小白友好，含术语表 + 决策摘要 + 链路走读）** |
 | [AGENTS.md](AGENTS.md) | AI 会话入口（规则宪法） |
 | [docs/plan.md](docs/plan.md) | **功能实现计划书（必读）** |
 | [docs/adr/](docs/adr/) | 架构决策记录 |
