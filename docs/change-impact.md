@@ -30,12 +30,14 @@
 | 加/改中间件密码 | `deploy/docker/.env.example` 加变量名 + `docker-compose*.yml` 引用 `${VAR}` + `docs/dev-workflow.md` |
 | 加/改配置中的密钥字段 | `configs/*.yaml.example` 模板中字段为空 `""` + 注释说明环境变量名 + `internal/config/load.go:bindEnvMappings` 绑定 |
 | 加/改日志中的敏感字段 | `internal/middleware/logging.go:sensitiveQueryKeys` 添加脱敏字段名 + `docs/dev-workflow.md` 日志安全规范更新 |
+| 加/改工单/安全整改记录 | `docs/private/` 本地文档更新 + 公开文档仅保留脱敏摘要；不要放入 `docs/features/` / README / AGENTS.md 的公开内容中 |
 
 > **硬性要求**：
 > - 仓库追踪文件（`git ls-files`）中**绝不允许**出现真实密码、token、API key
 > - Docker Compose 中密码通过 `${VIBESHOP_*}` 变量引用，不写明文
 > - `*.yaml.example` / `.env.example` 中密钥字段必须为空字符串 `""`
 > - 数据库用户使用业务用户（如 `vibeshop`），不使用超级用户（`root`/`postgres`）
+> - 工单号、扫描单号、内网规则名、整改过程记录默认视为私有信息，放 `docs/private/`，不进入 GitHub
 
 ---
 

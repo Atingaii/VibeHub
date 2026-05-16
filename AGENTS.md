@@ -71,6 +71,7 @@ configs/
 docs/
   adr/                      架构决策记录
   features/                 功能设计文档（做之前先写这里）
+  private/                  本地私有文档（工单/安全扫描/整改记录，.gitignore，不提交 GitHub）
   plan.md                   功能实现计划书
 deploy/
   docker/
@@ -108,6 +109,7 @@ web/                        前端（Next.js，后做）
 ## 禁忌与陷阱
 
 - **不要把密钥提交到仓库**。配置文件（`configs/dev.yaml`、`deploy/docker/.env`）已加入 `.gitignore`；模板文件（`*.example`）中密钥字段必须为空字符串 `""`。Docker Compose 中密码通过 `${VIBESHOP_*}` 变量引用，不写明文。→ *违反后果：HW 代码安全扫描告警，密钥泄露风险，工单需紧急修复。*
+- **不要把工单/安全扫描整改文档提交到 GitHub**。此类内容统一放 `docs/private/`，目录已加入 `.gitignore`；公开仓库只保留脱敏后的通用设计或结论。→ *违反后果：泄露工单号、内网规则、整改上下文等隐私信息。*
 - **数据库用户使用业务用户，不用超级用户**。开发/生产均使用 `vibeshop` 用户（非 `root`/`postgres`），遵循最小权限原则。→ *违反后果：CodeCC inner-mdb-normal-client 规则告警；超级用户被攻破后攻击者可操作任意表。*
 - **日志中不要打印敏感信息**。query 参数脱敏见 `internal/middleware/logging.go:sensitiveQueryKeys`；GORM SQL 日志不输出完整参数值（Warn 级别）。→ *违反后果：日志泄露用户密码/token，违反数据安全合规要求。*
 
@@ -154,6 +156,7 @@ web/                        前端（Next.js，后做）
 - 架构决策 → 各 `docs/adr/NNN-*.md` 唯一详细版；AGENTS.md 只放一句话总结 + 链接
 - 代码地图 → `docs/code-map.md` 唯一详细版（代码实现后创建），AGENTS.md 只放精简版 + "详见 code-map.md"
 - 同步检查表 → `docs/change-impact.md` 唯一详细版；AGENTS.md 只放 Top-5
+- 工单/安全整改隐私材料 → `docs/private/` 本地保留；公开文档只写脱敏摘要
 
 修改时只动一处，避免"一处改另一处忘"。
 
@@ -248,6 +251,7 @@ Doc-Impact: docs/architecture.md, AGENTS.md
 
 - [docs/adr/](docs/adr/) — 架构决策记录（为什么这么做）
 - [docs/features/](docs/features/) — 功能设计文档（做之前先写这里）
+- `docs/private/` — 本地私有文档（工单/安全扫描/整改记录，不提交 GitHub）
 - [docs/change-impact.md](docs/change-impact.md) — R2 同步检查表详版（加耦合规则只改这里）
 - [docs/architecture.md](docs/architecture.md) — 系统架构全景图（实现后创建）
 - [docs/code-map.md](docs/code-map.md) — "我想改 X 应该动哪"详版（实现后创建）

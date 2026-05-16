@@ -54,6 +54,9 @@ uploads/
 logs/
 *.log
 
+# Private internal docs (tickets / security remediation / internal scan records)
+docs/private/
+
 # Docker
 docker-compose.override.yml
 vibeshop

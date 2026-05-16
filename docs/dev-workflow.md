@@ -77,6 +77,9 @@
 > **⚠ 安全说明**：`configs/dev.yaml` 和 `configs/docker.yaml` 已加入 `.gitignore`，不提交仓库。
 > 真实密钥通过**环境变量**注入，或本地填写 `configs/dev.yaml`（不会被 git 追踪）。
 
+> **⚠ 隐私说明**：工单号、安全扫描记录、整改过程文档统一放 `docs/private/`。
+> 该目录为本地私有目录，已加入 `.gitignore`，不要把这类内容写入 `docs/features/`、README 或 AGENTS.md。
+
 > **⚠ 注意**：Go `time.Duration` 只支持 `h`/`m`/`s`/`ms`/`us`/`ns` 单位，不支持 `d`（天）。
 > 7 天请写 `"168h"`，不要写 `"7d"`。
 

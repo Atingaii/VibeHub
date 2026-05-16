@@ -95,7 +95,7 @@ echo ""
 echo "--- [2/4] 代码锚点存在性检查 ---"
 
 # 查找 md 文件中类似 `internal/xxx/yyy.go:FuncName` 的锚点
-ANCHORS=$(grep -rhoP '`[a-zA-Z_/]+\.go:[a-zA-Z_]+`' docs/ AGENTS.md README.md 2>/dev/null | tr -d '`' | sort -u || true)
+ANCHORS=$(grep -rhoP --exclude-dir=private '`[a-zA-Z_/]+\.go:[a-zA-Z_]+`' docs/ AGENTS.md README.md 2>/dev/null | tr -d '`' | sort -u || true)
 
 ANCHOR_MISSING=0
 if [[ -n "$ANCHORS" ]]; then
