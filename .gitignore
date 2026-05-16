@@ -60,3 +60,9 @@ docs/private/
 # Docker
 docker-compose.override.yml
 vibeshop
+
+# AI agent local state (do not commit)
+# .ccb/ 是本地 CCB 工作区与运行态产物（daemon socket / lifecycle / 会话日志 / 本机 agent 配置）
+# .claude/settings.local.json 是 Claude Code 本机权限白名单缓存
+.ccb/
+.claude/settings.local.json
