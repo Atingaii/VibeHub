@@ -39,6 +39,10 @@
 
 ![拼团购物数据流 — 开团→库存预扣→订单创建→消息→超时/成团](pic/groupbuy-flow/groupbuy-flow.png)
 
+- **订单支付超时**：`order.payment.timeout`，固定 30 分钟，负责关闭未支付订单并释放库存预扣
+- **拼团成团超时**：`groupbuy.deadline.reached`，按活动时限（导读示例 24 小时）检查是否成团；未成团则退款已支付成员
+- 两条消息的 consumer 分属 `order` 与 `groupbuy`，不能合并成一个“超时处理器”
+
 ### 2. Feed 写扩散（普通作者 < 2000 粉丝）
 
 ![Feed 写扩散流程 — 发布→NATS→粉丝列表→Redis ZADD→读取](pic/feed-push/feed-push.png)
@@ -77,7 +81,8 @@ import "internal/module/product/stock"
 |------|----------|------|
 | 库存预扣 | Redis Lua 原子脚本 + NATS 异步落库 MySQL | [ADR-003](adr/003-redis-unified-cache.md) |
 | Feed 推拉 | 粉丝数阈值 2000 分流，Redis SortedSet | [ADR-005](adr/005-feed-push-pull-hybrid.md) |
-| 订单超时 | NATS JetStream 延迟投递 | [ADR-004](adr/004-nats-messaging.md) |
+| 订单支付超时 | NATS JetStream 延迟投递；30 分钟未支付关单 | [ADR-004](adr/004-nats-messaging.md) |
+| 拼团成团超时 | NATS JetStream 延迟投递；活动时限到达后检查未成团退款 | [ADR-004](adr/004-nats-messaging.md) |
 | AI 调度 | MCP Gateway 统一路由 + 限流 + fallback | [ADR-006](adr/006-mcp-gateway.md) |
 | 分布式锁 | Redis SETNX + 过期时间 | [ADR-003](adr/003-redis-unified-cache.md) |
 | 热度排序 | Wilson Score + 时间衰减因子 | [ADR-005](adr/005-feed-push-pull-hybrid.md) |

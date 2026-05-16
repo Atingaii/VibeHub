@@ -14,7 +14,7 @@ VibeShop 把三种通常分开做的产品**合在同一个后端进程里**：
 
 用户能开团、邀请朋友凑人数、到点自动成团或退款。
 - 涉及模块：商品（`internal/module/product/`）、订单（`order/`）、拼团（`groupbuy/`）、库存预扣（Redis Pool `stock`）
-- 关键技术：Redis Lua 原子脚本扣库存防超卖、NATS JetStream 处理订单超时
+- 关键技术：Redis Lua 原子脚本扣库存防超卖、NATS JetStream 分别处理订单支付超时与拼团成团超时
 - 当前状态：[规划中]
 
 ### 场景 B — 内容社区（像知乎首页的 Feed 流）

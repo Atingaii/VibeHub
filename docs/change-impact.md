@@ -67,13 +67,14 @@
 | 改订单状态机 | `internal/model/order_status.go` + store + MQ consumer + 前端状态展示 |
 | 改退款流程 | store + MQ consumer + 支付接口调用 + 通知推送 |
 | 加订单类型 | model + store + 状态机分支 + 前端展示 |
-| 改超时逻辑 | NATS 延迟消息配置 + consumer + 库存回滚 |
+| 改支付超时逻辑 | order timeout topic/consumer + 库存回滚 + 订单状态机 |
 
 ### 拼团系统
 
 | 改动 | 必须同时更新 |
 |------|-------------|
 | 改成团条件 | `internal/module/groupbuy/state_machine.go` + Redis + 超时 consumer |
+| 改拼团成团超时/失败逻辑 | groupbuy deadline topic/consumer + 退款策略 + 状态机 |
 | 改拼团库存 | `internal/cache/stock.lua` + store + 幂等校验 |
 | 加拼团类型 | model + activity store + 状态机分支 + 前端 |
 

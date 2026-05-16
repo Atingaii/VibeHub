@@ -105,6 +105,8 @@ web/                        前端 Next.js（后续阶段）
 3. `internal/module/<name>/consumer.go` — 实现消费逻辑
 4. `main.go` — 注册 consumer
 
+> 订单支付超时与拼团成团超时必须分别建 topic / consumer，不共用一个超时 handler。
+
 ### 我想加一个新的业务模块
 
 1. 创建 `internal/module/<name>/` 目录

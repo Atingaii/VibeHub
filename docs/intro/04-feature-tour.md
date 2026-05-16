@@ -12,10 +12,11 @@
 
 ### 业务流程白话版
 
-1. 用户 A 在某商品页点"开团"——选规格、付钱、把团号 `T123` 分享给朋友
-2. 朋友 B 拿到链接进来"跟团"——同样选规格、付钱
-3. 凑够人数（比如 3 人）→ 团号 `T123` **自动成团**，每个成员的订单变成"待发货"
-4. 24 小时没凑够 → **自动退款**给所有已支付成员
+1. 用户 A 在某商品页点"开团"——先创建一张拼团订单，支付成功后把团号 `T123` 分享给朋友
+2. 朋友 B 拿到链接进来"跟团"——同样下单、付款
+3. 每张待支付订单都只有 **30 分钟支付窗口**；超时未支付就自动取消，不进入成团判断
+4. 团真正开始倒计时后，若 24 小时内凑够人数（比如 3 人）→ 团号 `T123` **自动成团**
+5. 24 小时没凑够 → **自动退款**给所有已支付成员
 
 ### 后端怎么跑
 
@@ -32,27 +33,35 @@
               │               │               │
               ▼               ▼               ▼
         product.Service   stock.Lua脚本  order.Service
-        查 SKU/价格      Redis 原子扣减  写订单 (MySQL)
+        查 SKU/价格      Redis 原子扣减  写待支付订单 (MySQL)
               │               │               │
               └───────┬───────┴───────────────┘
                       │
                       ▼
-                  发 NATS 消息
-                  "groupbuy.timeout.30min"
+              发 NATS 消息 "order.payment.timeout"
                       │
-            （30 分钟后由 NATS Consumer 收到）
+            （30 分钟后由 order Consumer 收到）
+                      │
+          订单仍未支付？
+          ├─ 是 → 关单 + 回滚库存
+          └─ 否 → 支付回调成功，团状态=进行中
+                      │
+                      ▼
+        发 NATS 消息 "groupbuy.deadline.reached"
+                      │
+            （示例：24 小时后由 groupbuy Consumer 收到）
                       │
                       ▼
                 查团状态：满员？
-                ├─ 是 → 全员订单标"待发货"
-                └─ 否 → 退款（调 payment.Service）
+                ├─ 是 → 幂等退出 / 全员订单标"待发货"
+                └─ 否 → 退款已支付成员（调 payment.Service）
 ```
 
 ### 关键技术点
 
 - **库存预扣防超卖**：用 [Lua 脚本](00-glossary.md#lua)在 Redis 端原子完成"读 → 判 > 0 → 扣"，整段不会被打断。Pool 走 `PoolStock`（DB 2，noeviction，不能静默丢）。
 - **订单写 MySQL**：因为是交易数据（强一致 + 行级锁），按 [ADR-002](../adr/002-dual-database.md) 选 MySQL。
-- **超时机制走 NATS JetStream 延迟投递**：发消息时带 `delivery delay 30min`，到点 NATS 投到 Consumer。比起业务侧轮询数据库优雅得多。
+- **两类 deadline 必须拆开**：`order.payment.timeout` 只处理 30 分钟未支付关单；`groupbuy.deadline.reached` 只处理活动时限（本文示例 24 小时）未成团退款。两者 topic、consumer、幂等键都不能混用。
 - **跨库一致性**（订单 MySQL ↔ 积分 / Feed PG）：走 [Saga 模式](00-glossary.md#saga)，本地事务 + 失败补偿。
 
 ### 现状
@@ -253,7 +262,7 @@ Gateway 路由 → AI Summary MCP Server (gRPC)
 
 | 链路 | 触发 | 关键中间件 | 写入位置 | 同步 / 异步 | 当前阶段 |
 |---|---|---|---|---|---|
-| 拼团下单 | 用户开团 / 跟团 | Redis Lua + NATS 延迟 | MySQL orders + Redis stock | **同步**扣库存写订单 + **异步**超时处理 | [规划中，阶段 4] |
+| 拼团下单 | 用户开团 / 跟团 | Redis Lua + NATS 双 deadline | MySQL orders + Redis stock | **同步**扣库存写订单 + **异步**支付超时/成团超时处理 | [规划中，阶段 4] |
 | Feed 写扩散 | 普通作者发文 | NATS fanout + Redis SortedSet | PG posts + Redis inbox/outbox | 发布同步 + 扩散异步 | [规划中，阶段 7] |
 | Feed 读扩散 | 大 V 发文 / 粉丝读 Feed | Redis SINTER + ZREVRANGEBYSCORE | PG posts + Redis outbox | 写时同步 / 读时实时聚合 | [规划中，阶段 7-8] |
 | AI 总结 | 博文发布触发 | NATS + MCP Gateway + LLM | PG ai_summaries + Redis cache | **完全异步**（用户不等） | [规划中，阶段 9-11] |
