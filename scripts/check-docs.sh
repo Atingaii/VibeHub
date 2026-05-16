@@ -46,10 +46,21 @@ if [[ -f docs/dev-workflow.md ]] && [[ -f configs/dev.yaml ]]; then
   MISSING_COUNT=0
   for var in $DOC_VARS; do
     # VIBESHOP_* 是 Docker Compose 专用变量（docs/dev-workflow.md 中
-    # "Docker 专用环境变量" 节明确说明应用不直接读取），跳过对账。
+    # "Docker 专用环境变量" 节明确说明应用不直接读取）。校验拆两步：
+    #   (1) 在 deploy/docker/.env.example 中必须出现（活跃赋值或注释模板均算声明）
+    #   (2) 在 deploy/docker/docker-compose*.yml 中必须有 *非注释* 的真实引用
+    #       端口类变量 VIBESHOP_*_HOST_PORT 默认走 ${VAR:-默认}，
+    #       注释保留在 .env.example 中表示用户可选覆盖。
     if [[ "$var" == VIBESHOP_* ]]; then
-      if ! grep -rq "$var" deploy/docker/ 2>/dev/null; then
-        log_warn "Docker 变量 $var 在 deploy/docker/ 中未找到引用"
+      if ! grep -Eq "^[[:space:]]*#?[[:space:]]*${var}=" deploy/docker/.env.example 2>/dev/null; then
+        log_warn "Docker 变量 $var 在 deploy/docker/.env.example 中未声明（活跃或注释模板均可）"
+        MISSING_COUNT=$((MISSING_COUNT + 1))
+      fi
+      # 同时覆盖 ${VAR} 与 ${VAR:-default}，并排除以 # 开头的 yaml 注释行
+      # 锚点 [^[:space:]#] 要求"行首空白后第一个非空白字符不是 #"，
+      # 否则 [[:space:]]* 可能匹配 0 长度而 [^#] 落到空白上，导致注释行漏判
+      if ! grep -Elq "^[[:space:]]*[^[:space:]#].*\\\$\\{${var}(:-[^}]*)?\\}" deploy/docker/docker-compose*.yml 2>/dev/null; then
+        log_warn "Docker 变量 $var 未在 deploy/docker/docker-compose*.yml 中被非注释行引用"
         MISSING_COUNT=$((MISSING_COUNT + 1))
       fi
       continue

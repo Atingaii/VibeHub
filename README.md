@@ -27,7 +27,9 @@
 
 # Docker 密钥（MySQL/PG/Redis 密码）：
 cp deploy/docker/.env.example deploy/docker/.env
-# 编辑 deploy/docker/.env，填入真实密码（openssl rand -base64 24 生成）
+# 编辑 deploy/docker/.env，填入真实密码
+# - MySQL/Redis/JWT 用 openssl rand -base64 24
+# - PG 必须 URL-safe，用 openssl rand -hex 24（详见 .env.example 内联说明）
 
 # 应用配置（可选，环境变量优先级更高）：
 cp configs/dev.yaml.example configs/dev.yaml
