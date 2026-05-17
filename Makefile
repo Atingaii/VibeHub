@@ -6,7 +6,7 @@
 	infra-up infra-down infra-clean infra-status infra-wait \
 	docker-build docker-up docker-down docker-logs \
 	quick-start full-start \
-	migrate seed clean help
+	migrate migrate-status migrate-down seed clean help
 
 # ============= 变量 =============
 
@@ -128,8 +128,14 @@ full-start: docker-up ## 全 Docker 启动：一条命令跑全部（适合演�
 
 # ============= 数据库 =============
 
-migrate: ## 执行数据库迁移
-	go run . migrate
+migrate: ## 执行数据库迁移（默认 all = mysql + pg；可加 TARGET=mysql|pg）
+	go run . migrate up $(or $(TARGET),all)
+
+migrate-status: ## 查看迁移状态（默认 all；可加 TARGET=mysql|pg）
+	go run . migrate status $(or $(TARGET),all)
+
+migrate-down: ## 回滚一步迁移（默认 all；可加 TARGET=mysql|pg）
+	go run . migrate down $(or $(TARGET),all)
 
 seed: ## 填充测试数据
 	go run . seed
@@ -167,8 +173,10 @@ help: ## 显示帮助
 	@echo "  make docker-logs    查看应用日志"
 	@echo ""
 	@echo "📋 数据库:"
-	@echo "  make migrate        执行迁移"
-	@echo "  make seed           填充测试数据"
+	@echo "  make migrate              执行迁移（默认 all；TARGET=mysql|pg 限定单库）"
+	@echo "  make migrate-status       查看迁移状态"
+	@echo "  make migrate-down         回滚一步"
+	@echo "  make seed                 填充测试数据"
 	@echo ""
 	@echo "🧹 清理:"
 	@echo "  make clean          清理构建产物"

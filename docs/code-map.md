@@ -23,9 +23,12 @@ internal/
     cors.go                 CORS 中间件
   module/
     user/                   用户模块（注册/登录/资料/标签/关注）
-      handler.go            HTTP handler
-      service.go            业务逻辑（interface 定义）
-      service_impl.go       业务逻辑实现
+      module.go             模块入口：Module struct + NewModule(db) + RegisterRoutes(rg)
+      handler.go            Gin handler（HTTP ↔ service）
+      service.go            业务逻辑：规范化 + 校验 + bcrypt + store
+      dto.go                请求/响应 struct
+      errors.go             业务 sentinel：ErrInvalidIdentifier / ErrInvalidPassword / ErrIdentifierTaken
+      service_test.go       service 单测（mock store）
     product/                商品模块（SPU/SKU/分类/搜索）
     order/                  订单模块（下单/支付/退款/状态机）
     groupbuy/               拼团模块（开团/参团/成团/超时）
@@ -47,7 +50,11 @@ internal/
       model_router.go       多模型切换 + fallback
       tools/                各 tool 实现
   model/                    数据模型定义（各表 struct）
+    user.go                 users 表（1.1）
   store/                    数据访问层（各模块 DAO）
+    user_store.go           UserStore.Create（1062 → ErrIdentifierTaken）
+  migrate/                  goose 库模式封装
+    migrate.go              Up/Down/Status × Target(mysql|pg|all)；空目录 no-op；DBProvider 接口
   cache/
     keys.go                 Redis key 定义（唯一来源）
     stock.lua               库存预扣 Lua 脚本
@@ -57,8 +64,9 @@ internal/
     consumer.go             消息消费基类
 scripts/
   migration/
-    mysql/                  MySQL DDL 迁移脚本
-    pg/                     PostgreSQL DDL 迁移脚本
+    mysql/                  MySQL DDL 迁移脚本（goose 格式 NNNNN_name.sql，--+goose Up/Down 段）
+      00001_create_users.sql users 表（1.1）
+    pg/                     PostgreSQL DDL 迁移脚本（1.1 暂为 .gitkeep；空目录由 internal/migrate 兜底 no-op）
   check-docs.sh            文档一致性检查脚本
 configs/
   dev.yaml                  开发配置
@@ -110,7 +118,7 @@ web/                        前端 Next.js（后续阶段）
 ### 我想加一个新的业务模块
 
 1. 创建 `internal/module/<name>/` 目录
-2. 实现 handler / service / service_impl
+2. 实现 `module.go`（Module struct + `NewModule` + `RegisterRoutes`）+ `handler.go` + `service.go` + `dto.go` + `errors.go`
 3. `internal/server/router.go` — 注册路由组
 4. 如有独立表：走"加数据库表"流程
 5. 更新 `AGENTS.md` 代码地图精简版 + 本文件
@@ -126,6 +134,13 @@ web/                        前端 Next.js（后续阶段）
 1. `internal/module/feed/ranker.go` — 修改排序逻辑
 2. 考虑是否影响 A/B 测试配置
 3. 更新 `docs/adr/005-feed-push-pull-hybrid.md` 如有方案变更
+
+### 我想跑数据库迁移
+
+- `make migrate` / `make migrate-status` / `make migrate-down`，等价 `go run . migrate [up|down|status] [mysql|pg|all]`
+- 单库限定：`make migrate TARGET=mysql`
+- 加新迁移：在 `scripts/migration/{mysql,pg}/` 放 `NNNNN_name.sql`，必须含 `-- +goose Up` / `-- +goose Down` 段
+- 空目录会被自动跳过（PG 在 1.1 阶段尚未有迁移）；单库命令不会强制连接另一库
 
 ### 我想加一个新的 Redis 缓存
 
@@ -151,6 +166,8 @@ web/                        前端 Next.js（后续阶段）
 | 所有 Redis key 定义 | `internal/cache/keys.go` |
 | 所有 NATS topic 定义 | `internal/mq/topics.go` |
 | 所有环境变量说明 | `docs/dev-workflow.md` |
+| 数据库迁移入口 | `internal/migrate/migrate.go` + `scripts/migration/{mysql,pg}/` + `main.go runMigrate` |
+| 用户注册业务 | `internal/module/user/service.go:normalizeAndValidate` + `:Register` |
 | Feed 推拉阈值 | `internal/module/feed/config.go:PushThreshold` |
 | 库存预扣 Lua 脚本 | `internal/cache/stock.lua` |
 | 订单状态枚举 | `internal/model/order_status.go` |
@@ -159,5 +176,5 @@ web/                        前端 Next.js（后续阶段）
 
 ---
 
-*最后更新：2026-05-11*
-*注：本文档中的路径为规划路径，实际文件在功能实现后对照创建。*
+*最后更新：2026-05-17*
+*注：1.1 起按实际实现持续更新；尚未实现的模块路径仍是规划（后续阶段对照创建）。*

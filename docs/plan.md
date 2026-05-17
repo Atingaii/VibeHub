@@ -38,7 +38,7 @@
 
 | # | 功能 | 说明 | 退出门 |
 |---|------|------|--------|
-| 1.1 | 用户注册 | 手机号/邮箱 + 密码注册，密码 bcrypt | 注册成功返回用户信息 |
+| 1.1 | 用户注册 ✅ | username/phone/email 三选一 + 密码（bcrypt cost=10）；详见 [docs/features/1.1-user-register.md](features/1.1-user-register.md) | 三种 identifier 各 201 + 大小写不敏感 + 唯一冲突 409 |
 | 1.2 | 用户登录 | 密码验证 + JWT 签发（access + refresh） | 登录返回 token，后续请求带 token 鉴权 |
 | 1.3 | JWT 中间件 | 统一鉴权中间件，白名单路由跳过 | 无 token 返回 401，过期返回 401 |
 | 1.4 | 用户资料 | 昵称/头像/简介的 CRUD | 更新成功，GET 返回最新资料 |

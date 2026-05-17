@@ -3,6 +3,8 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/vibeshop/vibeshop/internal/config"
@@ -20,53 +22,92 @@ type Manager struct {
 	Postgres *gorm.DB
 }
 
-// New 初始化双数据库连接池。
-// 启动时 Ping 验证，失败重试 3 次（间隔 2s），全部失败则返回 error。
-func New(cfg *config.DatabaseConfig, debug bool) (*Manager, error) {
-	// 根据 debug 模式选择 GORM 日志级别。
-	// 注意：Info 级别会将完整 SQL（含绑定参数值）输出到日志，存在敏感数据泄露风险。
-	// 开发环境使用 Warn 级别：只记录慢查询和错误，不输出完整参数。
-	// 如需排查 SQL 问题，可临时改为 gormlogger.Info，但不提交该改动。
+// newGormConfig 构造一份独立的 *gorm.Config。每次 Open 必须用独立实例，
+// 因为 gorm.Open 会把 *gorm.Config 与 dialector 绑定到返回的 *gorm.DB 上，
+// 共享会导致后一次 Open 的方言/clauses 状态污染前一次。
+//
+// gormLogger 强制 ParameterizedQueries=true：让 SQL 日志渲染占位符而非绑定值，
+// 避免 Warn 级别的 SQL 错误日志泄露 password_hash 等敏感参数。
+func newGormConfig() *gorm.Config {
 	logLevel := gormlogger.Warn
-
-	gormCfg := &gorm.Config{
-		Logger: gormlogger.Default.LogMode(logLevel),
-	}
-
-	// 初始化 MySQL
-	zap.L().Info("[database] connecting to MySQL...",
-		zap.String("dsn", maskDSN(cfg.MySQL.DSN)),
+	gormLogger := gormlogger.New(
+		log.New(os.Stderr, "\r\n", log.LstdFlags),
+		gormlogger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  logLevel,
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
+			Colorful:                  true,
+		},
 	)
-	mysqlDB, err := connectMySQL(cfg.MySQL, gormCfg)
+	return &gorm.Config{Logger: gormLogger}
+}
+
+// OpenMySQL 仅打开 MySQL 连接（启动重试 3 次 + 连接池配置）。
+// 用于 migrate 等只需单库的场景，避免连带初始化 PostgreSQL。
+func OpenMySQL(cfg config.DBConnConfig) (*gorm.DB, error) {
+	zap.L().Info("[database] connecting to MySQL...",
+		zap.String("dsn", maskDSN(cfg.DSN)),
+	)
+	db, err := connectMySQL(cfg, newGormConfig())
 	if err != nil {
 		return nil, fmt.Errorf("mysql connect: %w", err)
 	}
-	if err := configurePool(mysqlDB, cfg.MySQL); err != nil {
+	if err := configurePool(db, cfg); err != nil {
 		return nil, fmt.Errorf("mysql pool config: %w", err)
 	}
 	zap.L().Info("[database] MySQL connected",
-		zap.Int("max_open_conns", cfg.MySQL.MaxOpenConns),
-		zap.Int("max_idle_conns", cfg.MySQL.MaxIdleConns),
-		zap.Duration("conn_max_lifetime", cfg.MySQL.ConnMaxLifetime),
+		zap.Int("max_open_conns", cfg.MaxOpenConns),
+		zap.Int("max_idle_conns", cfg.MaxIdleConns),
+		zap.Duration("conn_max_lifetime", cfg.ConnMaxLifetime),
 	)
+	return db, nil
+}
 
-	// 初始化 PostgreSQL
+// OpenPostgres 仅打开 PostgreSQL 连接（启动重试 3 次 + 连接池配置）。
+func OpenPostgres(cfg config.DBConnConfig) (*gorm.DB, error) {
 	zap.L().Info("[database] connecting to PostgreSQL...",
-		zap.String("dsn", maskDSN(cfg.Postgres.DSN)),
+		zap.String("dsn", maskDSN(cfg.DSN)),
 	)
-	pgDB, err := connectPostgres(cfg.Postgres, gormCfg)
+	db, err := connectPostgres(cfg, newGormConfig())
 	if err != nil {
 		return nil, fmt.Errorf("postgres connect: %w", err)
 	}
-	if err := configurePool(pgDB, cfg.Postgres); err != nil {
+	if err := configurePool(db, cfg); err != nil {
 		return nil, fmt.Errorf("postgres pool config: %w", err)
 	}
 	zap.L().Info("[database] PostgreSQL connected",
-		zap.Int("max_open_conns", cfg.Postgres.MaxOpenConns),
-		zap.Int("max_idle_conns", cfg.Postgres.MaxIdleConns),
-		zap.Duration("conn_max_lifetime", cfg.Postgres.ConnMaxLifetime),
+		zap.Int("max_open_conns", cfg.MaxOpenConns),
+		zap.Int("max_idle_conns", cfg.MaxIdleConns),
+		zap.Duration("conn_max_lifetime", cfg.ConnMaxLifetime),
 	)
+	return db, nil
+}
 
+// CloseGormDB 关闭单个 GORM 连接的底层 *sql.DB。
+func CloseGormDB(db *gorm.DB) error {
+	if db == nil {
+		return nil
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
+
+// New 初始化双数据库连接池。
+// 启动时 Ping 验证，失败重试 3 次（间隔 2s），全部失败则返回 error。
+func New(cfg *config.DatabaseConfig, debug bool) (*Manager, error) {
+	mysqlDB, err := OpenMySQL(cfg.MySQL)
+	if err != nil {
+		return nil, err
+	}
+	pgDB, err := OpenPostgres(cfg.Postgres)
+	if err != nil {
+		_ = CloseGormDB(mysqlDB)
+		return nil, err
+	}
 	return &Manager{
 		MySQL:    mysqlDB,
 		Postgres: pgDB,

@@ -4,21 +4,16 @@
 
 ## 项目状态
 
-**当前阶段：阶段 0 — 项目骨架**
+**当前阶段：阶段 1 — 用户体系（进行中）**
 
-- [x] 技术选型调研
-- [x] 架构决策（ADR）
-- [x] 规则骨架（AGENTS.md）
-- [x] 功能计划书
-- [x] 0.1 项目初始化（Gin server + /health）
-- [x] 0.2 配置加载（Viper + 环境变量覆盖）
-- [x] 0.3 日志系统（zap 结构化日志 + 请求日志中间件）
-- [x] 0.4 数据库连接（GORM + MySQL/PostgreSQL 双连接池 + 启动验证 + 断连重试）
-- [x] 0.5 Redis 连接（go-redis v9 + 连接池 + Ping 验证 + 重试）
-- [x] 0.6 Docker 基础设施（`make infra-up` 一键起 MySQL/PG/Redis/NATS，全部 healthy）
-- [x] 0.7 Docker 应用镜像（多阶段 Dockerfile + `make docker-up` 全栈一键启动）
-- [x] 0.8 快捷启动入口（`make quick-start` / `make full-start` / `make help`）
-- [ ] 阶段 1-12：功能实现
+- [x] 阶段 0 — 项目骨架（0.1 ~ 0.8 + 0.9 端口参数化）
+- [x] 1.1 用户注册（密码注册 + goose 迁移基础设施）
+- [ ] 1.2 用户登录 / JWT 签发
+- [ ] 1.3 JWT 鉴权中间件
+- [ ] 1.4 用户资料 CRUD
+- [ ] 1.5 用户标签体系
+- [ ] 1.6 关注 / 粉丝
+- [ ] 阶段 2-12：商品 / 订单 / 拼团 / 券 / 抽奖 / 内容 / Feed / AI / 人群 / 前端 / 移动端
 
 ## 快速开始
 

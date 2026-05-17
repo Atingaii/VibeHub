@@ -8,6 +8,7 @@ import (
 	"github.com/vibeshop/vibeshop/internal/config"
 	"github.com/vibeshop/vibeshop/internal/database"
 	"github.com/vibeshop/vibeshop/internal/middleware"
+	"github.com/vibeshop/vibeshop/internal/module/user"
 )
 
 // Version 和 BuildTime 由编译时 ldflags 注入，默认 "dev"
@@ -69,9 +70,10 @@ func SetupRouter(cfg *config.Config, db *database.Manager, rds *cache.RedisManag
 	})
 
 	// ====== 业务路由（按模块分组注册）======
-	// 后续阶段在此处按模块添加路由组，例如：
-	// userModule.RegisterRoutes(r.Group("/api/v1/users"))
-	// productModule.RegisterRoutes(r.Group("/api/v1/products"))
+	v1 := r.Group("/api/v1")
+
+	userMod := user.NewModule(db.MySQL)
+	userMod.RegisterRoutes(v1)
 
 	return r
 }

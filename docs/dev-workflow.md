@@ -165,10 +165,24 @@ make infra-up
 ### 2. 数据库迁移
 
 ```bash
-make migrate
-# 执行 go run . migrate
-# 读取 scripts/migration/mysql/*.sql 和 scripts/migration/pg/*.sql
+make migrate           # 等价 go run . migrate up all（mysql + pg）
+make migrate-status    # 查看每个 target 的已应用 / 待应用版本
+make migrate-down      # 回滚最近一次（默认 all）
+
+# 单库限定（在做单库变更或排错时用）：
+make migrate TARGET=mysql
+go run . migrate up mysql
+go run . migrate down pg
 ```
+
+迁移引擎是 [pressly/goose](https://github.com/pressly/goose) 库模式，
+SQL 文件通过 `//go:embed` 编译进二进制，路径：
+
+- `scripts/migration/mysql/NNNNN_name.sql`
+- `scripts/migration/pg/NNNNN_name.sql`
+
+每份迁移必须含 `-- +goose Up` / `-- +goose Down` 段。空目录视为零迁移，
+任何 action 自动 no-op；单库命令不会强制连接另一库（实现见 `internal/migrate/migrate.go`）。
 
 ### 3. 填充测试数据
 
@@ -247,8 +261,10 @@ make build          # 编译生产二进制
 make test           # 运行单元测试
 make test-race      # 带竞态检测测试
 make lint           # 代码静态检查
-make migrate        # 执行数据库迁移
-make seed           # 填充测试数据
+make migrate            # 执行数据库迁移（默认 all；TARGET=mysql|pg 限定单库）
+make migrate-status     # 查看迁移状态
+make migrate-down       # 回滚一步迁移
+make seed               # 填充测试数据
 make infra-up       # 启动基础设施（Docker）+ 等待健康就绪
 make infra-down     # 停止基础设施
 make infra-status   # 查看基础设施容器状态
@@ -297,6 +313,7 @@ make help           # 显示帮助（分类命令列表）
 | `[mcp]` | MCP Gateway |
 | `[cache]` | Redis 缓存层 |
 | `[mq]` | 消息队列 |
+| `[migrate]` | 数据库迁移（goose 库模式） |
 | `[http]` | HTTP 请求日志（RequestLogger 中间件） |
 | `[database]` | 数据库连接层 |
 | `[logger]` | 日志系统自身（Sync 失败等） |
@@ -311,6 +328,12 @@ HTTP 请求日志中，以下 query 参数名会自动替换为 `[REDACTED]`：
 
 如需新增脱敏字段，在 `internal/middleware/logging.go:sensitiveQueryKeys` map 中添加。
 
+**GORM SQL 日志参数化**（`internal/database/database.go:newGormConfig`）：
+
+GORM logger 启用 `ParameterizedQueries: true`，Warn 级 SQL 错误日志只输出占位符（`?` / `$1`），
+不输出绑定参数值。这样 `password_hash`、token 等敏感参数永远不会进日志，
+即便发生唯一冲突 / 慢查询触发 SQL dump。
+
 **Sync 错误处理**（`internal/logger/logger.go:Sync`）：
 
 程序退出时调用 `logger.Sync()`。错误分两类：
@@ -319,4 +342,4 @@ HTTP 请求日志中，以下 query 参数名会自动替换为 `[REDACTED]`：
 
 ---
 
-*最后更新：2026-05-15*
+*最后更新：2026-05-17*

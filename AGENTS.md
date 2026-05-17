@@ -236,11 +236,11 @@ Doc-Impact: docs/architecture.md, AGENTS.md
 | 想做什么 | 动哪里 |
 |---|---|
 | 加 REST 端点 | `internal/server/router.go` 挂路由 → `internal/module/<name>/handler.go` → `internal/store/` |
-| 加数据库表 | `scripts/migration/` DDL → `internal/model/` struct → `internal/store/` DAO |
+| 加数据库表 | `scripts/migration/{mysql,pg}/NNNNN_name.sql`（goose 格式） → `internal/model/` struct → `internal/store/` DAO；用 `make migrate` / `make migrate TARGET=mysql` 执行 |
 | 加 Redis 缓存 | `internal/cache/keys.go` 定义 key → `internal/cache/<name>.go` 实现 |
 | 加消息 Topic | `internal/mq/topics.go` 定义 → producer 模块 → consumer 模块 |
 | 加 MCP Tool | `internal/module/mcp/tools/` 实现 → `configs/mcp-tools.yaml` 路由 → 文档 |
-| 加新业务模块 | `internal/module/<name>/` 全套 → `internal/server/router.go` 注册 → AGENTS.md 更新 |
+| 加新业务模块 | `internal/module/<name>/` 全套（module.go / handler.go / service.go / dto.go / errors.go） → `internal/server/router.go` 注册 → AGENTS.md 更新 |
 | 改配置项 | `configs/*.yaml` + `internal/config/` 加载逻辑 + `docs/dev-workflow.md` 环境变量表 |
 | 改中间件 | `internal/middleware/` + `internal/server/router.go` 注册顺序 |
 
