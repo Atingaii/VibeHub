@@ -17,6 +17,19 @@
 
 ## 快速开始
 
+### 方式一：一键启动（推荐，首次 clone 用）
+
+```bash
+make first-run
+# 等价 ./scripts/bootstrap.sh
+# 自动：生成密钥 → 起中间件 → 跑迁移 → 前台启动应用
+# Ctrl+C 退出
+```
+
+脚本是幂等的——已经有 `.env` / `dev.yaml` 时不会覆盖；中间件已 healthy 时直接走迁移和启动。
+
+### 方式二：手工五步（细节可控）
+
 ```bash
 # 步骤 0：初始化密钥配置（首次 clone 必做）
 
@@ -30,17 +43,23 @@ cp deploy/docker/.env.example deploy/docker/.env
 cp configs/dev.yaml.example configs/dev.yaml
 # 编辑 configs/dev.yaml，填入 DSN 等配置（或通过环境变量覆盖）
 
-# 方式一：中间件 Docker + 本地编译运行（适合开发，推荐）
+# 步骤 1-3：中间件 Docker + 迁移 + 本地编译运行
 make infra-up    # 启动 MySQL/PG/Redis/NATS（全部 healthy 后返回）
+make migrate     # 应用 schema 迁移
 go run .         # 本地编译运行应用
 curl http://localhost:8080/health
+```
 
-# 方式二：全 Docker 一键启动（零本地 Go 环境依赖）
+### 方式三：全 Docker 一键启动（零本地 Go 环境依赖）
+
+```bash
 make docker-up
 # 如果 8080 端口被占用：APP_HOST_PORT=8088 make docker-up
 curl http://localhost:8080/health
+```
 
-# 验证输出
+```bash
+# 验证输出（任一方式启动后）
 # => {"status":"ok","service":"vibeshop","mysql_ok":true,"postgres_ok":true,"redis_ok":true,...}
 ```
 

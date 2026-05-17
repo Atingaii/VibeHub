@@ -5,7 +5,7 @@
 	test test-race lint doc-lint \
 	infra-up infra-down infra-clean infra-status infra-wait \
 	docker-build docker-up docker-down docker-logs \
-	quick-start full-start \
+	first-run quick-start full-start \
 	migrate migrate-status migrate-down seed clean help
 
 # ============= 变量 =============
@@ -112,6 +112,9 @@ docker-logs: ## 查看应用日志
 
 # ============= 快捷启动组合 =============
 
+first-run: ## 一键启动（首次 clone 推荐）：自动生成密钥 → 起中间件 → 跑迁移 → 前台启动应用（Ctrl+C 退出）
+	@./scripts/bootstrap.sh
+
 quick-start: ## 快捷启动：中间件 Docker + 本地运行应用（适合开发）
 	@echo ""
 	@echo "========================================="
@@ -154,7 +157,8 @@ help: ## 显示帮助
 	@echo "================="
 	@echo ""
 	@echo "📦 快捷启动（推荐）:"
-	@echo "  make quick-start    中间件 Docker + 本地运行（开发首选）"
+	@echo "  make first-run      🚀 一键启动（首次 clone：自动生成密钥 + 起中间件 + 迁移 + 启动应用）"
+	@echo "  make quick-start    中间件 Docker + 本地运行（开发首选，需先有 .env / dev.yaml）"
 	@echo "  make full-start     全 Docker 一键启动（零本地依赖）"
 	@echo ""
 	@echo "🔧 开发:"
