@@ -157,8 +157,10 @@
 | 加/改主链路数据流 | `docs/architecture.md` + 对应 ADR + `docs/intro/04-feature-tour.md` |
 | 加/改技术栈选型 | `docs/intro/05-tech-stack-rationale.md`（A/B 节判断） + 如需 ADR 论证则新增 ADR + `README.md` 技术栈段 |
 | 加/改新概念术语 | `docs/intro/00-glossary.md` 加条目 + 首次出现处链接到术语表 |
+| **完成一个 plan.md 子项（任意 X.Y 退出门达成）** | `README.md` 阶段进度勾掉 + `docs/plan.md` 行打勾 + `docs/intro/01-what-is-vibeshop.md` "当前状态" 段刷新（时间戳 + 子项状态） |
+| **新业务端点端到端可用（不只是 stub）** | router 注册 + handler/service + `docs/intro/04-feature-tour.md` 增加链路条目（含可跑的 curl 示例与代码锚点） |
 | 弃用设计 | 旧文档首行加 DEPRECATED 标记（R5） + 新文档链接 + `docs/intro/03-design-decisions.md` 状态更新 |
 
 ---
 
-*最后更新：2026-05-15*
+*最后更新：2026-05-17*

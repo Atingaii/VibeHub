@@ -1,10 +1,86 @@
 # 04 — 主链路走读
 
-> 4 条核心链路的白话讲解。每条配上"小白也能看懂的步骤" + 关键技术点 + 现状标注。
+> 5 条核心链路的白话讲解。每条配上"小白也能看懂的步骤" + 关键技术点 + 现状标注。
 >
 > 不熟的词请查 [00-glossary.md](00-glossary.md)。
 >
-> 注意：阶段 1-12 的业务模块都 [规划中]，本文叙述的是**已完成的设计**，不是已运行的代码。
+> 注意：链路 0（用户注册）已在 1.1 阶段实现，可以真的跑起来；链路 A-D 仍是**已完成的设计**，业务代码逐阶段补齐中。
+
+---
+
+## 链路 0 — 用户注册（已实现）<a id="链路-0--用户注册已实现"></a>
+
+> 1.1 阶段已完成，是当前唯一**业务**端点（`/health` 是基础设施端点）。
+> 走完这条链路，你能体感整个 ADR-001 单体 + ADR-002 双库 + 0.4 GORM + 1.1 goose 迁移的协同。
+
+### 业务流程白话版
+
+1. 调用方提交 `POST /api/v1/auth/register`，body 里 `username` / `phone` / `email` 三选一作为身份标识，外加 `password`
+2. 服务端先**规范化**输入（`username` / `email` 转小写 + 去空白、`phone` 仅去空白），再校验三选一规则与各字段格式
+3. 通过校验的 `password` 用 bcrypt（cost=10）哈希
+4. 数据落 MySQL `users` 表；唯一索引保证标识不重复，CHECK 约束 `chk_users_identifier_present` 兜底"至少一个标识非空"
+5. 成功返回 201 + 用户基本信息；标识冲突 409；入参不合法 400
+
+### 后端怎么跑
+
+```
+前端 ─POST /api/v1/auth/register──┐
+                                   │
+                                   ▼
+                              router.go
+                                   │
+                                   ▼
+                       user.handler.Register
+                          解析 JSON / 错误码映射
+                                   │
+                                   ▼
+                       user.service.Register
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    │                    │
+              ▼                    ▼                    ▼
+        normalizeAndValidate   bcrypt.GenerateFrom   store.UserStore.Create
+        TrimSpace+ToLower      Password (cost=10)    GORM INSERT users
+        三选一 + 正则 + 严格邮箱校验                       │
+                                                          ▼
+                                                MySQL users 表
+                                                ├─ 唯一索引（username/phone/email）
+                                                └─ CHECK chk_users_identifier_present
+                                                          │
+                                          ┌───────────────┼───────────────┐
+                                          │               │               │
+                                          ▼               ▼               ▼
+                                    1062 冲突        3819 CHECK         成功
+                                  ErrIdentifier   ErrIdentifier    填回 ID/CreatedAt
+                                       Taken           Missing
+                                          │               │               │
+                                          ▼               ▼               ▼
+                                       409              400 (兜底)       201 + JSON
+```
+
+### 关键技术点
+
+- **三列均可 NULL + 各自唯一索引**——MySQL 唯一索引允许多个 NULL，恰好支撑"任一标识即可注册"语义。
+- **service 与 DB 双层防线**：service `normalizeAndValidate` 是主防线；DB 层 `chk_users_identifier_present` CHECK 约束兜底未来跳过 service 的写入路径（admin / 批量导入 / 其他模块直插）。两层都通过 sentinel error 一致映射到 HTTP 400/409。
+- **唯一性的真实性来源是 DB 唯一索引**，service 不做先查后写（避免 TOCTOU 竞态 + 多余查询）。
+- **邮箱严格校验**：正则锁定 `local@domain.tld` 形态 + `net/mail.ParseAddress` 后强制 `addr.Name == ""` 且 `addr.Address == 输入`，拒绝 `Foo <a@b.com>` 这种 display-name 形式与无 TLD 形式。
+- **密码安全**：bcrypt 60 字节 hash 入库；GORM logger 启用 `ParameterizedQueries=true`，SQL 错误日志只渲染占位符，确保 hash / token 等绑定值永远不进日志。
+- **数据库迁移是 goose 库模式**：SQL 文件通过 `//go:embed` 编译进二进制，`migrate up/down/status [mysql|pg|all]` 子命令按 target 懒加载单库——单库命令不会因为另一库不可达而失败。
+
+### 你能跑起来的版本
+
+```bash
+make infra-up && make migrate && make run
+# 另一个终端：
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"Strong#1"}'
+# => 201 {"user_id":1,"username":"alice","phone":null,"email":null,"created_at":"..."}
+```
+
+代码锚点：`internal/module/user/{handler,service,errors,dto}.go` + `internal/store/user_store.go` + `scripts/migration/mysql/00001_create_users.sql` + `00002_users_require_identifier.sql`。
+
+设计文档详版：[docs/features/1.1-user-register.md](../features/1.1-user-register.md)。
 
 ---
 
