@@ -92,6 +92,17 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 			)
 			return nil, ErrIdentifierTaken
 		}
+		// DB 层 CHECK 兜底：service 校验已拦三选一，理论上走不到这里。
+		// 真触发说明上游绕过了 service.normalizeAndValidate（admin 工具 / 批量导入 / 测试），
+		// 仍按 INVALID_REQUEST 对外，但内部记 "db_check_violated" 便于排查。
+		if errors.Is(err, store.ErrIdentifierMissing) {
+			zap.L().Warn("[user] register fail",
+				zap.String("code", "INVALID_REQUEST"),
+				zap.String("reason", "db_check_violated"),
+				zap.String("identifier_type", n.idType),
+			)
+			return nil, ErrInvalidIdentifier
+		}
 		return nil, err
 	}
 
