@@ -1,0 +1,13 @@
+# golangci-lint v2 配置；docs: https://golangci-lint.run/usage/configuration/
+version: "2"
+
+run:
+  timeout: 3m
+  go: "1.25"
+
+linters:
+  default: standard
+
+formatters:
+  enable:
+    - gofmt

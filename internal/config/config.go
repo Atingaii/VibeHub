@@ -85,11 +85,11 @@ type AuthConfig struct {
 
 // AIConfig AI 相关配置
 type AIConfig struct {
-	DefaultModel    string `mapstructure:"default_model"`
-	OllamaURL       string `mapstructure:"ollama_url"`
-	OpenAIAPIKey    string `mapstructure:"openai_api_key"`
-	ClaudeAPIKey    string `mapstructure:"claude_api_key"`
-	DailyTokenBudget int   `mapstructure:"daily_token_budget"`
+	DefaultModel     string `mapstructure:"default_model"`
+	OllamaURL        string `mapstructure:"ollama_url"`
+	OpenAIAPIKey     string `mapstructure:"openai_api_key"`
+	ClaudeAPIKey     string `mapstructure:"claude_api_key"`
+	DailyTokenBudget int    `mapstructure:"daily_token_budget"`
 }
 
 // ObservabilityConfig 可观测性配置

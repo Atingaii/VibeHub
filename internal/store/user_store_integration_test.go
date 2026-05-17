@@ -32,7 +32,7 @@ func TestUserStore_Create_RejectsAllNullIdentifiers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open mysql: %v", err)
 	}
-	defer database.CloseGormDB(db)
+	defer func() { _ = database.CloseGormDB(db) }()
 
 	store := NewUserStore(db)
 

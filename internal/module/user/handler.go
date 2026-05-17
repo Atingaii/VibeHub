@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -8,12 +9,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// handler 把 HTTP 与 service 解耦。
-type handler struct {
-	svc *service
+// registerService 是 handler 对 service 的最小依赖契约（便于 handler 单测注入 fake）。
+type registerService interface {
+	Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error)
 }
 
-func newHandler(svc *service) *handler {
+// handler 把 HTTP 与 service 解耦。
+type handler struct {
+	svc registerService
+}
+
+func newHandler(svc registerService) *handler {
 	return &handler{svc: svc}
 }
 

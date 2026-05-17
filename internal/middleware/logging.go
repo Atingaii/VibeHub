@@ -11,20 +11,20 @@ import (
 
 // sensitiveQueryKeys 列举需要脱敏的 query 参数名（不区分大小写）。
 var sensitiveQueryKeys = map[string]struct{}{
-	"token":        {},
-	"access_token": {},
+	"token":         {},
+	"access_token":  {},
 	"refresh_token": {},
-	"password":     {},
-	"passwd":       {},
-	"secret":       {},
-	"api_key":      {},
-	"apikey":       {},
-	"key":          {},
-	"auth":         {},
+	"password":      {},
+	"passwd":        {},
+	"secret":        {},
+	"api_key":       {},
+	"apikey":        {},
+	"key":           {},
+	"auth":          {},
 	"authorization": {},
-	"code":         {},
-	"sign":         {},
-	"signature":    {},
+	"code":          {},
+	"sign":          {},
+	"signature":     {},
 }
 
 // maskQuery 对 URL query 字符串中的敏感参数值替换为 [REDACTED]。

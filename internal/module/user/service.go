@@ -123,8 +123,9 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 // normalizeAndValidate 把请求规范化并校验所有约束，返回入库形态 + 失败原因（仅供日志）。
 //
 // 返回的 reason 与外部 INVALID_REQUEST 文案解耦，仅供运维排查：
-//   "no_identifier" / "multiple_identifiers" / "username_format" / "phone_format"
-//   "email_format" / "password_length" / ""（成功时）
+//
+//	"no_identifier" / "multiple_identifiers" / "username_format" / "phone_format"
+//	"email_format" / "password_length" / ""（成功时）
 //
 // 规范化（在校验之前做）：
 //   - username / email：TrimSpace + ToLower

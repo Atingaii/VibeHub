@@ -95,10 +95,10 @@ func bindEnvMappings(v *viper.Viper) {
 		"ai.daily_token_budget": "AI_DAILY_TOKEN_BUDGET",
 
 		// Observability
-		"observability.log_level":          "LOG_LEVEL",
-		"observability.log_format":         "LOG_FORMAT",
-		"observability.tracing.endpoint":   "OTEL_EXPORTER_ENDPOINT",
-		"observability.metrics.port":       "METRICS_PORT",
+		"observability.log_level":        "LOG_LEVEL",
+		"observability.log_format":       "LOG_FORMAT",
+		"observability.tracing.endpoint": "OTEL_EXPORTER_ENDPOINT",
+		"observability.metrics.port":     "METRICS_PORT",
 	}
 
 	for key, envVar := range mappings {

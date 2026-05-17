@@ -22,8 +22,10 @@ var ErrIdentifierTaken = errors.New("store: identifier taken")
 var ErrIdentifierMissing = errors.New("store: identifier missing")
 
 // MySQL 错误码：
-//   1062 = ER_DUP_ENTRY（唯一键冲突）
-//   3819 = ER_CHECK_CONSTRAINT_VIOLATED（CHECK 约束违反，MySQL 8.0+）
+//
+//	1062 = ER_DUP_ENTRY（唯一键冲突）
+//	3819 = ER_CHECK_CONSTRAINT_VIOLATED（CHECK 约束违反，MySQL 8.0+）
+//
 // 见 https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
 const (
 	mysqlDupKey                  = 1062

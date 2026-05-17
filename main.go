@@ -31,7 +31,7 @@ var migrationFS embed.FS
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		if err := runMigrate(os.Args[2:]); err != nil {
-			os.Stderr.WriteString("[fatal] migrate: " + err.Error() + "\n")
+			_, _ = os.Stderr.WriteString("[fatal] migrate: " + err.Error() + "\n")
 			os.Exit(1)
 		}
 		return
@@ -42,12 +42,12 @@ func main() {
 
 	cfg, err := config.Load("configs")
 	if err != nil {
-		os.Stderr.WriteString("[fatal] failed to load config: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("[fatal] failed to load config: " + err.Error() + "\n")
 		os.Exit(1)
 	}
 
 	if err := logger.Init(cfg.Observability.LogLevel, cfg.Observability.LogFormat); err != nil {
-		os.Stderr.WriteString("[fatal] failed to init logger: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("[fatal] failed to init logger: " + err.Error() + "\n")
 		os.Exit(1)
 	}
 	defer logger.Sync()
