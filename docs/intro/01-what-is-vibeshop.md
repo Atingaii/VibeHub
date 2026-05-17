@@ -69,8 +69,9 @@ VibeShop 把三种通常分开做的产品**合在同一个后端进程里**：
 
 阶段 1 —— **用户体系（进行中）**：
 - 1.1 用户注册 ✅ —— `POST /api/v1/auth/register`，username/phone/email 三选一，bcrypt cost=10，CHECK 约束 DB 兜底
-- 1.2 用户登录 / JWT [下一步]
-- 1.3 JWT 鉴权中间件、1.4 资料、1.5 标签、1.6 关注 [规划中]
+- 1.2 用户登录 ✅ —— `POST /api/v1/auth/{login,refresh,logout}`，HS256 JWT（access 2h + refresh 7d），refresh 哈希存 Redis PoolSession + Lua 原子轮换防并发，logout 幂等
+- 1.3 JWT 鉴权中间件 [下一步]
+- 1.4 资料、1.5 标签、1.6 关注 [规划中]
 
 同时 1.1 阶段引入了 **goose 数据库迁移**（库模式 + embed.FS + DBProvider 接口按需开库），作为后续所有阶段的 schema 演进基础设施。
 

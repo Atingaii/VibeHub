@@ -24,8 +24,11 @@ type Server struct {
 }
 
 // NewServer 创建 HTTP server，从配置读取端口和超时参数
-func NewServer(cfg *config.Config, db *database.Manager, rds *cache.RedisManager) *Server {
-	router := SetupRouter(cfg, db, rds)
+func NewServer(cfg *config.Config, db *database.Manager, rds *cache.RedisManager) (*Server, error) {
+	router, err := SetupRouter(cfg, db, rds)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Server{
 		cfg:   cfg,
@@ -37,7 +40,7 @@ func NewServer(cfg *config.Config, db *database.Manager, rds *cache.RedisManager
 			ReadTimeout:  cfg.Gateway.ReadTimeout,
 			WriteTimeout: cfg.Gateway.WriteTimeout,
 		},
-	}
+	}, nil
 }
 
 // Run 启动 HTTP server，支持优雅关闭

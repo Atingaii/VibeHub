@@ -244,7 +244,9 @@ Doc-Impact: docs/architecture.md, AGENTS.md
 |---|---|
 | 加 REST 端点 | `internal/server/router.go` 挂路由 → `internal/module/<name>/handler.go` → `internal/store/` |
 | 加数据库表 | `scripts/migration/{mysql,pg}/NNNNN_name.sql`（goose 格式） → `internal/model/` struct → `internal/store/` DAO；用 `make migrate` / `make migrate TARGET=mysql` 执行 |
-| 加 Redis 缓存 | `internal/cache/keys.go` 定义 key → `internal/cache/<name>.go` 实现 |
+| 加 Redis 缓存 | `internal/cache/keys.go` 定义 key（`UserRefreshKey` 等共享 helper 都在这里）→ 业务模块内调用 |
+| 加签发/校验 JWT | `internal/module/user/jwt.go`（HS256 + secret ≥ 32 字节） |
+| 加 session 存储（refresh / token 黑名单） | `internal/module/user/refresh_store.go` 模板：Redis PoolSession + Lua 原子 compare-then-act |
 | 加消息 Topic | `internal/mq/topics.go` 定义 → producer 模块 → consumer 模块 |
 | 加 MCP Tool | `internal/module/mcp/tools/` 实现 → `configs/mcp-tools.yaml` 路由 → 文档 |
 | 加新业务模块 | `internal/module/<name>/` 全套（module.go / handler.go / service.go / dto.go / errors.go） → `internal/server/router.go` 注册 → AGENTS.md 更新 |

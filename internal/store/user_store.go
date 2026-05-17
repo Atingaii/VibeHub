@@ -6,6 +6,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/vibeshop/vibeshop/internal/model"
@@ -20,6 +21,10 @@ var ErrIdentifierTaken = errors.New("store: identifier taken")
 // `chk_users_identifier_present` CHECK 约束。这是 service 层校验之外的 DB 兜底，
 // 用来保护未来跳过 service 的写入路径（admin / 批量导入 / 其他模块直插）。
 var ErrIdentifierMissing = errors.New("store: identifier missing")
+
+// ErrUserNotFound 表示按 identifier 查询时未命中。
+// 调用方（service.Login）映射为 401 INVALID_CREDENTIALS（与"密码错"统一文案，缓解枚举）。
+var ErrUserNotFound = errors.New("store: user not found")
 
 // MySQL 错误码：
 //
@@ -64,4 +69,61 @@ func (s *UserStore) Create(ctx context.Context, u *model.User) error {
 		return err
 	}
 	return nil
+}
+
+// IdentifierType 区分按哪一列查询用户。
+// 由调用方（user 模块的 classifyIdentifier）决定，store 不做识别——
+// 保证注册和登录的口径绝对一致。
+type IdentifierType string
+
+const (
+	IdentifierUsername IdentifierType = "username"
+	IdentifierPhone    IdentifierType = "phone"
+	IdentifierEmail    IdentifierType = "email"
+)
+
+// FindByIdentifier 按指定列查询用户。
+//
+// idType 决定查 username / phone / email 哪一列；norm 是已规范化后的字符串。
+// 单列查询而非 OR 三列：让 MySQL 走对应唯一索引，避免索引失效。
+//
+// 未命中返回 ErrUserNotFound；其他错误原样返回。
+func (s *UserStore) FindByIdentifier(ctx context.Context, norm string, idType IdentifierType) (*model.User, error) {
+	var column string
+	switch idType {
+	case IdentifierUsername:
+		column = "username"
+	case IdentifierPhone:
+		column = "phone"
+	case IdentifierEmail:
+		column = "email"
+	default:
+		return nil, fmt.Errorf("store: unknown identifier type %q", idType)
+	}
+
+	var u model.User
+	err := s.db.WithContext(ctx).Where(column+" = ?", norm).First(&u).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+// FindByID 按主键查询用户。Refresh 路径用它复查 user.Status，确保
+// 被禁用账号无法继续轮换 token。
+//
+// 未命中返回 ErrUserNotFound；其他错误原样返回。
+func (s *UserStore) FindByID(ctx context.Context, id uint64) (*model.User, error) {
+	var u model.User
+	err := s.db.WithContext(ctx).First(&u, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &u, nil
 }

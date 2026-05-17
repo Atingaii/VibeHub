@@ -52,6 +52,14 @@ func main() {
 	}
 	defer logger.Sync()
 
+	// JWT secret 强度校验：HS256 安全边界 ≥ 32 字节，避免开发偷懒用弱密钥。
+	if len(cfg.Auth.JWTSecret) < 32 {
+		zap.L().Fatal("[main] JWT secret too short",
+			zap.Int("got_bytes", len(cfg.Auth.JWTSecret)),
+			zap.Int("required_bytes", 32),
+		)
+	}
+
 	zap.L().Info("[main] VibeShop starting",
 		zap.String("version", Version),
 		zap.String("build_time", BuildTime),
@@ -80,7 +88,10 @@ func main() {
 		}
 	}()
 
-	srv := server.NewServer(cfg, dbManager, redisManager)
+	srv, err := server.NewServer(cfg, dbManager, redisManager)
+	if err != nil {
+		zap.L().Fatal("[main] failed to init server", zap.Error(err))
+	}
 	if err := srv.Run(); err != nil {
 		zap.L().Fatal("[main] server error", zap.Error(err))
 	}

@@ -29,3 +29,26 @@ type errorBody struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
+
+// LoginRequest 是 POST /api/v1/auth/login 的入参。
+//
+// identifier 单字段，service 层 classifyIdentifier 识别为 username / phone / email 之一。
+type LoginRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
+// LoginResponse 是登录 / refresh 成功的响应。
+type LoginResponse struct {
+	UserID           uint64    `json:"user_id"`
+	AccessToken      string    `json:"access_token"`
+	RefreshToken     string    `json:"refresh_token"`
+	AccessExpiresAt  time.Time `json:"access_expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
+	TokenType        string    `json:"token_type"`
+}
+
+// RefreshRequest 是 /refresh 与 /logout 的入参。
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}

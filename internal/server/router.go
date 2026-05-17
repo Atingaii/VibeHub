@@ -18,7 +18,7 @@ var (
 )
 
 // SetupRouter 创建并配置 Gin 路由
-func SetupRouter(cfg *config.Config, db *database.Manager, rds *cache.RedisManager) *gin.Engine {
+func SetupRouter(cfg *config.Config, db *database.Manager, rds *cache.RedisManager) (*gin.Engine, error) {
 	// 非 debug 模式使用 release mode
 	if !cfg.App.Debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -72,8 +72,15 @@ func SetupRouter(cfg *config.Config, db *database.Manager, rds *cache.RedisManag
 	// ====== 业务路由（按模块分组注册）======
 	v1 := r.Group("/api/v1")
 
-	userMod := user.NewModule(db.MySQL)
+	userMod, err := user.NewModule(db.MySQL, user.Config{
+		JWTSecret:       []byte(cfg.Auth.JWTSecret),
+		AccessTokenTTL:  cfg.Auth.AccessTokenTTL,
+		RefreshTokenTTL: cfg.Auth.RefreshTokenTTL,
+	}, rds.Pool(cache.PoolSession))
+	if err != nil {
+		return nil, err
+	}
 	userMod.RegisterRoutes(v1)
 
-	return r
+	return r, nil
 }

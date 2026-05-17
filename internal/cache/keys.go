@@ -12,7 +12,10 @@
 // Pool 走独立 server / Cluster；返回 redis.UniversalClient 就是为这步留口子。
 package cache
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // Pool 标识一个语义分组，对应 ADR-003 的用途分区。
 type Pool string
@@ -68,4 +71,16 @@ func (p Pool) Description() string {
 		return string(p)
 	}
 	return m.desc
+}
+
+// === 业务 key 模式 ===
+// 所有跨模块共享的 Redis key pattern 集中在这里（change-impact R2 规则）。
+// 单模块自用的临时 key 可在模块内定义，但任何在多个 endpoint / 任务间共享的 key
+// 必须在此登记，便于 grep 出"谁在写这个 key"。
+
+// UserRefreshKey 生成 user 模块的 refresh token 存储 key。
+// Pool 必须是 PoolSession（DB3，RequiresTTL=true）。
+// 由 1.2 用户登录引入，详见 docs/features/1.2-user-login.md。
+func UserRefreshKey(uid uint64, jti string) string {
+	return "user:refresh:" + strconv.FormatUint(uid, 10) + ":" + jti
 }

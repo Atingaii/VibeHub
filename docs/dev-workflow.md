@@ -27,7 +27,7 @@
 | `OSS_ACCESS_KEY` | OSS Access Key | (需配置) | |
 | `OSS_SECRET_KEY` | OSS Secret Key | (需配置) | |
 | `OSS_BUCKET` | OSS Bucket 名 | `vibeshop` | |
-| `JWT_SECRET` | JWT 签名密钥 | (需配置，≥32 字符) | 生产必须强随机 |
+| `JWT_SECRET` | JWT 签名密钥 | (需配置，≥32 字节) | **启动强校验**：长度不足 32 字节直接 Fatal 退出（HS256 安全边界）；生产必须强随机，建议 `openssl rand -base64 48` 生成 |
 | `JWT_ACCESS_TTL` | Access Token 有效期 | `2h` | |
 | `JWT_REFRESH_TTL` | Refresh Token 有效期 | `7d` | |
 | `AI_DEFAULT_MODEL` | 默认 AI 模型 | `ollama-qwen2` | 开发用本地模型 |

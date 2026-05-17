@@ -23,12 +23,14 @@ internal/
     cors.go                 CORS 中间件
   module/
     user/                   用户模块（注册/登录/资料/标签/关注）
-      module.go             模块入口：Module struct + NewModule(db) + RegisterRoutes(rg)
-      handler.go            Gin handler（HTTP ↔ service）
-      service.go            业务逻辑：规范化 + 校验 + bcrypt + store
+      module.go             模块入口：Module struct + NewModule(db, cfg, redisSession) + RegisterRoutes(rg)
+      handler.go            Gin handler（Register/Login/Refresh/Logout，HTTP ↔ service）
+      service.go            业务逻辑：classifyIdentifier 共享口径 + bcrypt + JWT + refresh store
+      jwt.go                JWT signer：HS256，secret ≥ 32 字节，typ claim 防混用
+      refresh_store.go      Redis PoolSession 存储：Save/Rotate/Revoke，Lua 原子 compare-then-act
       dto.go                请求/响应 struct
-      errors.go             业务 sentinel：ErrInvalidIdentifier / ErrInvalidPassword / ErrIdentifierTaken
-      service_test.go       service 单测（mock store）
+      errors.go             业务 sentinel：ErrInvalidIdentifier / ErrInvalidPassword / ErrIdentifierTaken / ErrInvalidCredentials / ErrInvalidToken
+      *_test.go             单测（service/handler/jwt/refresh_store 共 ~50 用例）
     product/                商品模块（SPU/SKU/分类/搜索）
     order/                  订单模块（下单/支付/退款/状态机）
     groupbuy/               拼团模块（开团/参团/成团/超时）
@@ -52,7 +54,7 @@ internal/
   model/                    数据模型定义（各表 struct）
     user.go                 users 表（1.1）
   store/                    数据访问层（各模块 DAO）
-    user_store.go           UserStore.Create（1062 → ErrIdentifierTaken）
+    user_store.go           UserStore.Create + FindByIdentifier + FindByID
   migrate/                  goose 库模式封装
     migrate.go              Up/Down/Status × Target(mysql|pg|all)；空目录 no-op；DBProvider 接口
   cache/
@@ -163,11 +165,14 @@ web/                        前端 Next.js（后续阶段）
 | 关键概念 | 唯一权威文件 |
 |----------|-------------|
 | 所有 Redis Pool 定义 | `internal/cache/keys.go:Pool` |
-| 所有 Redis key 定义 | `internal/cache/keys.go` |
+| 所有 Redis key 定义 | `internal/cache/keys.go`（`UserRefreshKey` 等） |
 | 所有 NATS topic 定义 | `internal/mq/topics.go` |
 | 所有环境变量说明 | `docs/dev-workflow.md` |
 | 数据库迁移入口 | `internal/migrate/migrate.go` + `scripts/migration/{mysql,pg}/` + `main.go runMigrate` |
 | 用户注册业务 | `internal/module/user/service.go:normalizeAndValidate` + `:Register` |
+| JWT 签发与校验 | `internal/module/user/jwt.go:JWTSigner` |
+| Refresh token 存储与轮换 | `internal/module/user/refresh_store.go:NewRedisRefreshStore`（Lua 原子 Rotate / Revoke） |
+| Identifier 识别与规范化 | `internal/module/user/service.go:classifyIdentifier`（注册 / 登录共用） |
 | Feed 推拉阈值 | `internal/module/feed/config.go:PushThreshold` |
 | 库存预扣 Lua 脚本 | `internal/cache/stock.lua` |
 | 订单状态枚举 | `internal/model/order_status.go` |

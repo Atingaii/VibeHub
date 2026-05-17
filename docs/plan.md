@@ -39,7 +39,7 @@
 | # | 功能 | 说明 | 退出门 |
 |---|------|------|--------|
 | 1.1 | 用户注册 ✅ | username/phone/email 三选一 + 密码（bcrypt cost=10）；详见 [docs/features/1.1-user-register.md](features/1.1-user-register.md) | 三种 identifier 各 201 + 大小写不敏感 + 唯一冲突 409 |
-| 1.2 | 用户登录 | 密码验证 + JWT 签发（access + refresh） | 登录返回 token，后续请求带 token 鉴权 |
+| 1.2 | 用户登录 ✅ | 密码验证 + JWT 签发（access 2h + refresh 7d，refresh 哈希存 Redis PoolSession + 原子轮换 + logout）；详见 [docs/features/1.2-user-login.md](features/1.2-user-login.md) | 登录返回 token，refresh 轮换并吊销旧 token，logout 后旧 refresh 不可用 |
 | 1.3 | JWT 中间件 | 统一鉴权中间件，白名单路由跳过 | 无 token 返回 401，过期返回 401 |
 | 1.4 | 用户资料 | 昵称/头像/简介的 CRUD | 更新成功，GET 返回最新资料 |
 | 1.5 | 用户标签体系 | 基础标签（性别/年龄段/地域）+ 行为标签（活跃度/消费等级） | 标签可查询、可批量打标 |

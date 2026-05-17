@@ -4,83 +4,123 @@
 >
 > 不熟的词请查 [00-glossary.md](00-glossary.md)。
 >
-> 注意：链路 0（用户注册）已在 1.1 阶段实现，可以真的跑起来；链路 A-D 仍是**已完成的设计**，业务代码逐阶段补齐中。
+> 注意：链路 0（注册 + 登录 + 轮换 + 登出）已在 1.1 / 1.2 阶段实现，可以真的跑起来；链路 A-D 仍是**已完成的设计**，业务代码逐阶段补齐中。
 
 ---
 
-## 链路 0 — 用户注册（已实现）<a id="链路-0--用户注册已实现"></a>
+## 链路 0 — 用户注册 + 登录 + Refresh + Logout（已实现）<a id="链路-0--用户注册已实现"></a>
 
-> 1.1 阶段已完成，是当前唯一**业务**端点（`/health` 是基础设施端点）。
-> 走完这条链路，你能体感整个 ADR-001 单体 + ADR-002 双库 + 0.4 GORM + 1.1 goose 迁移的协同。
+> 1.1 + 1.2 阶段已完成，是当前唯一**业务**端点（`/health` 是基础设施端点）。
+> 走完这条链路，你能体感整个 ADR-001 单体 + ADR-002 双库 + ADR-003 Redis Pool + 0.4 GORM + 1.1 goose 迁移的协同。
 
 ### 业务流程白话版
 
-1. 调用方提交 `POST /api/v1/auth/register`，body 里 `username` / `phone` / `email` 三选一作为身份标识，外加 `password`
-2. 服务端先**规范化**输入（`username` / `email` 转小写 + 去空白、`phone` 仅去空白），再校验三选一规则与各字段格式
-3. 通过校验的 `password` 用 bcrypt（cost=10）哈希
-4. 数据落 MySQL `users` 表；唯一索引保证标识不重复，CHECK 约束 `chk_users_identifier_present` 兜底"至少一个标识非空"
-5. 成功返回 201 + 用户基本信息；标识冲突 409；入参不合法 400
+1. **注册**：调用方提交 `POST /api/v1/auth/register`，body 里 `username` / `phone` / `email` 三选一作为身份标识，外加 `password`
+2. **登录**：调用方提交 `POST /api/v1/auth/login`，body 里 `identifier`（自动识别为 username/phone/email 之一）+ `password`，返回 access token (2h) + refresh token (7d)
+3. **后续请求**（1.3 实现）：在 `Authorization: Bearer <access>` 头带 access token；服务端中间件解析后认账
+4. **access 过期**：用 refresh token 调 `POST /api/v1/auth/refresh` 换新 access + 新 refresh（**轮换**：旧 refresh 立刻失效）
+5. **登出**：调 `POST /api/v1/auth/logout`，refresh 在 Redis 中被标记吊销，立即不可再用
 
-### 后端怎么跑
+### 后端怎么跑（注册 + 登录 + 轮换 + 登出）
 
 ```
 前端 ─POST /api/v1/auth/register──┐
                                    │
                                    ▼
-                              router.go
-                                   │
-                                   ▼
-                       user.handler.Register
-                          解析 JSON / 错误码映射
-                                   │
-                                   ▼
                        user.service.Register
+                          ├─ classifyIdentifier 规范化 + 严格邮箱校验
+                          ├─ bcrypt.GenerateFromPassword (cost=10)
+                          └─ store.UserStore.Create
                                    │
-              ┌────────────────────┼────────────────────┐
-              │                    │                    │
-              ▼                    ▼                    ▼
-        normalizeAndValidate   bcrypt.GenerateFrom   store.UserStore.Create
-        TrimSpace+ToLower      Password (cost=10)    GORM INSERT users
-        三选一 + 正则 + 严格邮箱校验                       │
-                                                          ▼
-                                                MySQL users 表
-                                                ├─ 唯一索引（username/phone/email）
-                                                └─ CHECK chk_users_identifier_present
-                                                          │
-                                          ┌───────────────┼───────────────┐
-                                          │               │               │
-                                          ▼               ▼               ▼
-                                    1062 冲突        3819 CHECK         成功
-                                  ErrIdentifier   ErrIdentifier    填回 ID/CreatedAt
-                                       Taken           Missing
-                                          │               │               │
-                                          ▼               ▼               ▼
-                                       409              400 (兜底)       201 + JSON
+                                   ▼
+                              MySQL users 表
+                              （唯一索引 + chk_users_identifier_present CHECK）
+
+前端 ─POST /api/v1/auth/login──────┐
+                                   │
+                                   ▼
+                       user.service.Login
+                          ├─ classifyIdentifier 自动识别 kind
+                          ├─ store.UserStore.FindByIdentifier（按 idType 单列查询，走唯一索引）
+                          ├─ bcrypt.CompareHashAndPassword（恒定时间）
+                          ├─ user.Status == active 校验（被禁用账号即使密码对也拒绝）
+                          ├─ jwt.SignAccess + jwt.SignRefresh (HS256，typ claim 防混用)
+                          └─ refresh_store.Save（SHA-256(refresh) 哈希后写 Redis PoolSession）
+                                   │
+                                   ▼
+                       返回 access_token + refresh_token + 过期时间
+
+前端 ─POST /api/v1/auth/refresh────┐
+                                   │
+                                   ▼
+                       user.service.Refresh
+                          ├─ 解析 + 校验签名 + exp + typ=="refresh"
+                          ├─ store.UserStore.FindByID 复查 user.Status（账号被禁用即拒绝）
+                          ├─ refresh_store.Rotate（Redis Lua 原子）：
+                          │     compare(oldKey, oldHash)
+                          │   → DEL oldKey
+                          │   → SET newKey newValue EX ttl
+                          │   单事务原子提交，并发只允许 1 个成功
+                          └─ 失败（hash 不匹配 / key 不存在）→ 401 INVALID_TOKEN
+
+前端 ─POST /api/v1/auth/logout─────┐
+                                   │
+                                   ▼
+                       user.service.Logout
+                          ├─ 解析 + 校验 token
+                          └─ refresh_store.Revoke（Redis Lua 原子 compare-then-DEL）
+                                   │
+                                   ▼
+                              204 No Content（幂等：hash 不匹配 / key 不存在仍 204）
 ```
 
 ### 关键技术点
 
-- **三列均可 NULL + 各自唯一索引**——MySQL 唯一索引允许多个 NULL，恰好支撑"任一标识即可注册"语义。
-- **service 与 DB 双层防线**：service `normalizeAndValidate` 是主防线；DB 层 `chk_users_identifier_present` CHECK 约束兜底未来跳过 service 的写入路径（admin / 批量导入 / 其他模块直插）。两层都通过 sentinel error 一致映射到 HTTP 400/409。
-- **唯一性的真实性来源是 DB 唯一索引**，service 不做先查后写（避免 TOCTOU 竞态 + 多余查询）。
-- **邮箱严格校验**：正则锁定 `local@domain.tld` 形态 + `net/mail.ParseAddress` 后强制 `addr.Name == ""` 且 `addr.Address == 输入`，拒绝 `Foo <a@b.com>` 这种 display-name 形式与无 TLD 形式。
+- **service 与 DB 双层防线**：service 校验是主防线，DB 唯一索引 + CHECK 约束兜底未来跳过 service 的写入路径。
+- **Identifier 规范化单一来源**：`classifyIdentifier` 是注册和登录共用的 helper，避免一边能注册另一边却查不到。
+- **JWT typ claim 防混用**：access 不能当 refresh 用、反之亦然；HS256 secret 启动校验 ≥ 32 字节。
+- **Refresh token 哈希存 Redis PoolSession**（DB3，必须 TTL）：泄露 Redis 数据时不能直接拿到能用的 token；SHA-256 对高熵随机串足够，refresh 是热路径不上 bcrypt。
+- **原子轮换**：Lua 脚本一次完成 compare-DEL-SET，并发同一旧 refresh 只允许 1 个成功，杜绝"一个旧 token 换出多条新 session"。
+- **logout 幂等**：hash 不匹配 / key 不存在都返回 204，不暴露 token 真伪信息；旧 refresh 调 logout 不会误删新 jti 对应的 key（因为旧 jti key 已被 Rotate 删除）。
+- **被禁用账号实时拦截**：Login 和 Refresh 都查 `user.Status`，确保账号下线即时生效，不靠 token 自然过期。
 - **密码安全**：bcrypt 60 字节 hash 入库；GORM logger 启用 `ParameterizedQueries=true`，SQL 错误日志只渲染占位符，确保 hash / token 等绑定值永远不进日志。
-- **数据库迁移是 goose 库模式**：SQL 文件通过 `//go:embed` 编译进二进制，`migrate up/down/status [mysql|pg|all]` 子命令按 target 懒加载单库——单库命令不会因为另一库不可达而失败。
+- **数据库迁移是 goose 库模式**：SQL 文件通过 `//go:embed` 编译进二进制，`migrate up/down/status [mysql|pg|all]` 子命令按 target 懒加载单库。
 
 ### 你能跑起来的版本
 
 ```bash
 make infra-up && make migrate && make run
-# 另一个终端：
+
+# 注册
 curl -X POST http://localhost:8080/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"Strong#1"}'
 # => 201 {"user_id":1,"username":"alice","phone":null,"email":null,"created_at":"..."}
+
+# 登录
+TOKENS=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"identifier":"alice","password":"Strong#1"}')
+echo $TOKENS
+# => {"user_id":1,"access_token":"eyJ...","refresh_token":"eyJ...","access_expires_at":"...","refresh_expires_at":"...","token_type":"Bearer"}
+
+# 用 refresh 轮换
+REFRESH=$(echo $TOKENS | jq -r .refresh_token)
+curl -s -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d "{\"refresh_token\":\"$REFRESH\"}"
+# => 200 + 新的 access + 新的 refresh；旧 REFRESH 立即失效
+
+# 登出
+curl -i -X POST http://localhost:8080/api/v1/auth/logout \
+  -H 'Content-Type: application/json' \
+  -d "{\"refresh_token\":\"$REFRESH\"}"
+# => 204 No Content
 ```
 
-代码锚点：`internal/module/user/{handler,service,errors,dto}.go` + `internal/store/user_store.go` + `scripts/migration/mysql/00001_create_users.sql` + `00002_users_require_identifier.sql`。
+代码锚点：`internal/module/user/{handler,service,jwt,refresh_store,errors,dto}.go` + `internal/store/user_store.go` + `internal/cache/keys.go:UserRefreshKey` + `scripts/migration/mysql/00001_create_users.sql` + `00002_users_require_identifier.sql`。
 
-设计文档详版：[docs/features/1.1-user-register.md](../features/1.1-user-register.md)。
+设计文档：[1.1-user-register.md](../features/1.1-user-register.md) + [1.2-user-login.md](../features/1.2-user-login.md)。
 
 ---
 
