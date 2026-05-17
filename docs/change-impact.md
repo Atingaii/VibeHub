@@ -153,7 +153,7 @@
 |------|-------------|
 | 加 ADR | `docs/adr/NNN-<slug>.md` + AGENTS.md 核心架构决策列表（如果是顶级决策） + `docs/intro/03-design-decisions.md` 摘要段 |
 | 改架构决策 | 对应 ADR + AGENTS.md 精简版 + `docs/intro/03-design-decisions.md` 状态/摘要 + 受影响的代码 |
-| 加功能设计 | `docs/features/<slug>.md` + `docs/plan.md` 如需调整路线图 |
+| 加功能设计 | `docs/features/<slug>.md`（**必须含「面试官 Q&A」段，4–6 条 Q，trade-off 领型为主**——见 AGENTS.md R1）+ `docs/plan.md` 如需调整路线图 |
 | 加/改主链路数据流 | `docs/architecture.md` + 对应 ADR + `docs/intro/04-feature-tour.md` |
 | 加/改技术栈选型 | `docs/intro/05-tech-stack-rationale.md`（A/B 节判断） + 如需 ADR 论证则新增 ADR + `README.md` 技术栈段 |
 | 加/改新概念术语 | `docs/intro/00-glossary.md` 加条目 + 首次出现处链接到术语表 |
