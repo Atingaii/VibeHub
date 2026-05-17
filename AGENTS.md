@@ -135,6 +135,13 @@ web/                        前端（Next.js，后做）
 
 没有设计文档的架构级改动，review 阶段要打回。
 
+**涉及数据模型时，设计文档必须回答**：
+
+> *如果 service / handler 不存在，DB schema 能否独立守住业务不变量？*
+
+逐一审视每条业务不变量（必要性 / 唯一性 / 范围 / 关联完整性 / 默认值），把守不住的那部分用 DB 层手段补上：CHECK 约束 / 唯一索引 / 外键 / NOT NULL / DEFAULT / 触发器（最后选项）。Service 校验仍是主防线，DB 是兜底——保护未来跳过 service 的写入路径（admin 工具 / 批量导入 / 其他模块直插 / 运维操作）。
+反例：1.1 注册曾让 `username/phone/email` 三列均 nullable 仅靠 service 保证"至少一个非空"，造成 DB 层可写幽灵行；后由 `00002_users_require_identifier.sql` 的 CHECK 约束补齐（详见 docs/features/1.1-user-register.md v4 修订）。
+
 ### R2. 同步检查表（Change-impact table）
 下表列出**最高频**的 5 条"改 X 必须**同时**改 Y"。动手前自查，提交前再过一遍：
 
